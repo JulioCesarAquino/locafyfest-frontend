@@ -1,66 +1,49 @@
 import { Bell, User, LogOut, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
-
 interface HeaderProps {
   userName: string;
   userType: 'admin' | 'client';
   companyName?: string;
 }
-
-export function Header({ userName, userType, companyName }: HeaderProps) {
+export function Header({
+  userName,
+  userType,
+  companyName
+}: HeaderProps) {
   const [darkMode, setDarkMode] = useState(false);
   const [notifications] = useState(3);
-
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('dark');
   };
-
-  return (
-    <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-6 sticky top-0 z-30">
+  return <header className="h-16 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-6 sticky top-0 z-30 bg-slate-950">
       {/* Left Section */}
       <div className="flex items-center space-x-4 ml-72 md:ml-0">
         <div>
           <h1 className="text-lg font-semibold text-foreground">
             {userType === 'admin' ? 'Painel Administrativo' : 'Portal do Cliente'}
           </h1>
-          {companyName && (
-            <p className="text-sm text-muted-foreground">{companyName}</p>
-          )}
+          {companyName && <p className="text-sm text-muted-foreground">{companyName}</p>}
         </div>
       </div>
 
       {/* Right Section */}
       <div className="flex items-center space-x-4">
         {/* Theme Toggle */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={toggleDarkMode}
-          className="w-9 h-9"
-        >
+        <Button variant="outline" size="icon" onClick={toggleDarkMode} className="w-9 h-9">
           {darkMode ? <Sun size={16} /> : <Moon size={16} />}
         </Button>
 
         {/* Notifications */}
         <Button variant="outline" size="icon" className="relative w-9 h-9">
           <Bell size={16} />
-          {notifications > 0 && (
-            <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs bg-danger">
+          {notifications > 0 && <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs bg-danger">
               {notifications}
-            </Badge>
-          )}
+            </Badge>}
         </Button>
 
         {/* User Menu */}
@@ -86,11 +69,9 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
               <User className="mr-2 h-4 w-4" />
               <span>Perfil</span>
             </DropdownMenuItem>
-            {userType === 'admin' && (
-              <DropdownMenuItem>
+            {userType === 'admin' && <DropdownMenuItem>
                 <span>Configurações</span>
-              </DropdownMenuItem>
-            )}
+              </DropdownMenuItem>}
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-danger">
               <LogOut className="mr-2 h-4 w-4" />
@@ -99,6 +80,5 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
-  );
+    </header>;
 }
