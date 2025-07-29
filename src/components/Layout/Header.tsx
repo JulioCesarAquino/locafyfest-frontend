@@ -20,7 +20,7 @@ export function Header({
     setDarkMode(!darkMode);
     document.documentElement.classList.toggle('dark');
   };
-  return <header className="h-16 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-6 sticky top-0 z-30 bg-slate-950">
+  return <header className="h-16 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-6 sticky top-0 z-30 bg-slate-50">
       {/* Left Section */}
       <div className="flex items-center space-x-4 ml-72 md:ml-0">
         <div>
