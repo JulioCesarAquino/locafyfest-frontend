@@ -5,15 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
   const handleLogin = async (e: React.FormEvent, userType: 'admin' | 'client') => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     // Simulate authentication
     setTimeout(() => {
       setIsLoading(false);
@@ -25,9 +23,7 @@ export default function Login() {
       }
     }, 1500);
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
+  return <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
       
@@ -40,9 +36,7 @@ export default function Login() {
             </div>
             <Sparkles className="w-6 h-6 text-primary animate-pulse" />
           </div>
-          <h1 className="text-3xl font-bold text-gradient-primary mb-2">
-            Festa System
-          </h1>
+          <h1 className="text-3xl font-bold text-gradient-primary mb-2">ABECE Festas</h1>
           <p className="text-muted-foreground">
             Sistema de Locação para Eventos e Festas
           </p>
@@ -68,110 +62,50 @@ export default function Login() {
 
               {/* Admin Login */}
               <TabsContent value="admin">
-                <form onSubmit={(e) => handleLogin(e, 'admin')} className="space-y-4">
+                <form onSubmit={e => handleLogin(e, 'admin')} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="admin-email">Email ou Usuário</Label>
-                    <Input
-                      id="admin-email"
-                      type="text"
-                      placeholder="admin@empresa.com"
-                      required
-                      className="h-11"
-                    />
+                    <Input id="admin-email" type="text" placeholder="admin@empresa.com" required className="h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="admin-password">Senha</Label>
                     <div className="relative">
-                      <Input
-                        id="admin-password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Digite sua senha"
-                        required
-                        className="h-11 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
+                      <Input id="admin-password" type={showPassword ? 'text' : 'password'} placeholder="Digite sua senha" required className="h-11 pr-10" />
+                      <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 btn-primary"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center space-x-2">
+                  <Button type="submit" className="w-full h-11 btn-primary" disabled={isLoading}>
+                    {isLoading ? <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>Entrando...</span>
-                      </div>
-                    ) : (
-                      'Entrar como Administrador'
-                    )}
+                      </div> : 'Entrar como Administrador'}
                   </Button>
                 </form>
               </TabsContent>
 
               {/* Client Login */}
               <TabsContent value="client">
-                <form onSubmit={(e) => handleLogin(e, 'client')} className="space-y-4">
+                <form onSubmit={e => handleLogin(e, 'client')} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="client-cpf">CPF</Label>
-                    <Input
-                      id="client-cpf"
-                      type="text"
-                      placeholder="000.000.000-00"
-                      required
-                      className="h-11"
-                    />
+                    <Input id="client-cpf" type="text" placeholder="000.000.000-00" required className="h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="client-password">Senha</Label>
                     <div className="relative">
-                      <Input
-                        id="client-password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Digite sua senha"
-                        required
-                        className="h-11 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
+                      <Input id="client-password" type={showPassword ? 'text' : 'password'} placeholder="Digite sua senha" required className="h-11 pr-10" />
+                      <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 btn-primary"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center space-x-2">
+                  <Button type="submit" className="w-full h-11 btn-primary" disabled={isLoading}>
+                    {isLoading ? <div className="flex items-center space-x-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>Entrando...</span>
-                      </div>
-                    ) : (
-                      'Entrar como Cliente'
-                    )}
+                      </div> : 'Entrar como Cliente'}
                   </Button>
                 </form>
               </TabsContent>
@@ -195,6 +129,5 @@ export default function Login() {
           </p>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
