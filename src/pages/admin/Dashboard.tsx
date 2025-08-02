@@ -8,6 +8,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import { AppLayout } from '@/components/Layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,7 +92,8 @@ const upcomingEvents = [
 
 export default function Dashboard() {
   return (
-    <div className="space-y-6">
+    <AppLayout userType="admin" userName="Administrador">
+      <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -227,6 +229,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

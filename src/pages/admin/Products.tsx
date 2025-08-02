@@ -150,7 +150,7 @@ export default function Products() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Dados básicos */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="nome">Nome do Produto *</Label>
                     <Input
@@ -202,7 +202,7 @@ export default function Products() {
                   {formData.variacoes.map((variacao, index) => (
                     <Card key={index} className="bg-surface/50">
                       <CardContent className="pt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div className="space-y-2">
                             <Label>Nome da Variação</Label>
                             <Input
@@ -265,7 +265,7 @@ export default function Products() {
 
         {/* Products Grid */}
         {products.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             {products.map((product) => (
               <Card key={product.id} className="bg-gradient-surface border-border/50 hover:shadow-primary transition-all duration-300">
                 <CardContent className="p-4">
