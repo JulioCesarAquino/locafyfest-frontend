@@ -94,19 +94,6 @@ export default function Dashboard() {
   return (
     <AppLayout userType="admin" userName="Administrador">
       <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Visão geral do seu negócio de locação
-          </p>
-        </div>
-        <Button className="btn-primary">
-          <Calendar className="w-4 h-4 mr-2" />
-          Novo Pedido
-        </Button>
-      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
