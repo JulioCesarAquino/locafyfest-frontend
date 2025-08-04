@@ -56,13 +56,19 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="admin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="admin" className="text-sm">
-                  Administrador
-                </TabsTrigger>
-                <TabsTrigger value="client" className="text-sm">
+            <Tabs defaultValue="client" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50">
+                <TabsTrigger 
+                  value="client" 
+                  className="text-sm font-semibold data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
+                >
                   Cliente
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="admin" 
+                  className="text-sm text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
+                >
+                  Administrador
                 </TabsTrigger>
               </TabsList>
 

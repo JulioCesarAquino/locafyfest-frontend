@@ -11,6 +11,11 @@ import Orders from "./pages/admin/Orders";
 import Settings from "./pages/admin/Settings";
 import Reports from "./pages/admin/Reports";
 import Admins from "./pages/admin/Admins";
+import Catalog from "./pages/client/Catalog";
+import MyOrder from "./pages/client/MyOrder";
+import History from "./pages/client/History";
+import Profile from "./pages/client/Profile";
+import Favorites from "./pages/client/Favorites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +36,11 @@ const App = () => (
           <Route path="/admin/settings" element={<Settings />} />
           <Route path="/admin/reports" element={<Reports />} />
           <Route path="/admin/admins" element={<Admins />} />
+          <Route path="/catalog" element={<Catalog />} />
+          <Route path="/my-order" element={<MyOrder />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/favorites" element={<Favorites />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
