@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,9 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Upload, Edit2, Trash2, Package, ImageIcon, X } from 'lucide-react';
+import { Plus, Upload, Edit2, Trash2, Package } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useImageUpload } from '@/hooks/useImageUpload';
 
 interface ProductVariation {
   id: string;
@@ -27,12 +26,8 @@ interface Product {
 
 export default function Products() {
   const { toast } = useToast();
-  const { uploadImage, uploading } = useImageUpload();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
   
   // Form state
   const [formData, setFormData] = useState({
@@ -74,39 +69,7 @@ export default function Products() {
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleImageUpload = async () => {
-    if (selectedImage) {
-      const imageUrl = await uploadImage(selectedImage);
-      if (imageUrl) {
-        setFormData(prev => ({ ...prev, foto: imageUrl }));
-        setSelectedImage(null);
-        setImagePreview('');
-      }
-    }
-  };
-
-  const removeImage = () => {
-    setSelectedImage(null);
-    setImagePreview('');
-    setFormData(prev => ({ ...prev, foto: '' }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validação básica
@@ -119,18 +82,11 @@ export default function Products() {
       return;
     }
 
-    // Upload da imagem se selecionada
-    let imageUrl = formData.foto;
-    if (selectedImage) {
-      imageUrl = await uploadImage(selectedImage);
-      if (!imageUrl) return; // Upload falhou
-    }
-
     const newProduct: Product = {
       id: Date.now().toString(),
       nome: formData.nome,
       descricao: formData.descricao,
-      foto: imageUrl || '/placeholder.svg',
+      foto: formData.foto || '/placeholder.svg',
       variacoes: formData.variacoes.map((v, i) => ({
         ...v,
         id: `${Date.now()}-${i}`
@@ -138,7 +94,13 @@ export default function Products() {
     };
 
     setProducts(prev => [...prev, newProduct]);
-    resetForm();
+    setFormData({
+      nome: '',
+      descricao: '',
+      foto: '',
+      variacoes: [{ nome: '', preco: 0, quantidade: 0 }]
+    });
+    setShowForm(false);
 
     toast({
       title: "Sucesso",
@@ -153,11 +115,6 @@ export default function Products() {
       foto: '',
       variacoes: [{ nome: '', preco: 0, quantidade: 0 }]
     });
-    setSelectedImage(null);
-    setImagePreview('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
     setShowForm(false);
   };
 
@@ -205,76 +162,17 @@ export default function Products() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="foto">Foto do Produto</Label>
-                    <div className="space-y-4">
-                      {/* Image Preview */}
-                      {(imagePreview || formData.foto) && (
-                        <div className="relative w-full h-32 border rounded-lg overflow-hidden bg-muted">
-                          <img
-                            src={imagePreview || formData.foto}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-2 right-2 h-6 w-6"
-                            onClick={removeImage}
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {/* Upload Area */}
-                      {!imagePreview && !formData.foto && (
-                        <div
-                          className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <ImageIcon size={32} className="mx-auto text-muted-foreground mb-2" />
-                          <p className="text-sm text-muted-foreground">
-                            Clique para selecionar uma imagem
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Formatos: JPG, PNG (máx. 5MB)
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Upload Controls */}
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <Upload size={16} className="mr-2" />
-                          Selecionar Imagem
-                        </Button>
-                        
-                        {selectedImage && (
-                          <Button
-                            type="button"
-                            onClick={handleImageUpload}
-                            disabled={uploading}
-                            className="flex-1"
-                          >
-                            {uploading ? 'Enviando...' : 'Fazer Upload'}
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Hidden File Input */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageSelect}
-                        className="hidden"
+                    <Label htmlFor="foto">URL da Foto</Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="foto"
+                        value={formData.foto}
+                        onChange={(e) => handleInputChange('foto', e.target.value)}
+                        placeholder="https://exemplo.com/foto.jpg"
                       />
+                      <Button type="button" variant="outline" size="icon">
+                        <Upload size={16} />
+                      </Button>
                     </div>
                   </div>
                 </div>
