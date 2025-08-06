@@ -36,12 +36,31 @@ export default function Products() {
     foto: '',
     variacoes: [{ nome: '', preco: 0, quantidade: 0 }]
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setImagePreview(result);
+        setFormData(prev => ({
+          ...prev,
+          foto: result // Temporarily store as base64 for preview
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleVariationChange = (index: number, field: string, value: string | number) => {
@@ -115,6 +134,8 @@ export default function Products() {
       foto: '',
       variacoes: [{ nome: '', preco: 0, quantidade: 0 }]
     });
+    setSelectedImage(null);
+    setImagePreview('');
     setShowForm(false);
   };
 
@@ -162,17 +183,40 @@ export default function Products() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="foto">URL da Foto</Label>
-                    <div className="flex space-x-2">
-                      <Input
-                        id="foto"
-                        value={formData.foto}
-                        onChange={(e) => handleInputChange('foto', e.target.value)}
-                        placeholder="https://exemplo.com/foto.jpg"
-                      />
-                      <Button type="button" variant="outline" size="icon">
-                        <Upload size={16} />
-                      </Button>
+                    <Label htmlFor="foto">Foto do Produto</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          id="foto-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => document.getElementById('foto-upload')?.click()}
+                          className="w-full"
+                        >
+                          <Upload size={16} className="mr-2" />
+                          {selectedImage ? 'Alterar Imagem' : 'Selecionar Imagem'}
+                        </Button>
+                      </div>
+                      {imagePreview && (
+                        <div className="relative w-32 h-32 border rounded-lg overflow-hidden bg-muted">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      {selectedImage && (
+                        <p className="text-sm text-muted-foreground">
+                          Arquivo selecionado: {selectedImage.name}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
