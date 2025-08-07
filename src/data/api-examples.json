@@ -1,0 +1,557 @@
+{
+  "dashboard": {
+    "stats": {
+      "endpoint": "GET /api/dashboard/stats",
+      "response": {
+        "receita_total": {
+          "valor": 45231.50,
+          "variacao": 20.1,
+          "tipo_variacao": "increase",
+          "descricao": "Em relação ao mês passado"
+        },
+        "pedidos_ativos": {
+          "quantidade": 23,
+          "variacao": 5,
+          "tipo_variacao": "increase",
+          "descricao": "Aguardando confirmação"
+        },
+        "clientes_ativos": {
+          "quantidade": 156,
+          "variacao": 12,
+          "tipo_variacao": "increase",
+          "descricao": "Novos este mês"
+        },
+        "produtos_disponiveis": {
+          "quantidade": 89,
+          "total": 92,
+          "indisponiveis": 3,
+          "tipo_variacao": "warning",
+          "descricao": "Do total de 92 produtos"
+        }
+      }
+    },
+    "recent_orders": {
+      "endpoint": "GET /api/dashboard/recent-orders",
+      "response": [
+        {
+          "id": "ORD-2024-001",
+          "cliente": {
+            "id": "CLI-001",
+            "nome": "Maria Silva Santos"
+          },
+          "items_resumo": "Mesa Redonda + 8 Cadeiras Tiffany",
+          "valor_total": 350.00,
+          "data_pedido": "2024-01-15T10:30:00Z",
+          "status": "pending"
+        },
+        {
+          "id": "ORD-2024-002",
+          "cliente": {
+            "id": "CLI-002",
+            "nome": "João Santos Oliveira"
+          },
+          "items_resumo": "Pula-pula Pequeno + Decoração",
+          "valor_total": 180.00,
+          "data_pedido": "2024-01-14T14:20:00Z",
+          "status": "confirmed"
+        },
+        {
+          "id": "ORD-2024-003",
+          "cliente": {
+            "id": "CLI-003",
+            "nome": "Ana Costa Lima"
+          },
+          "items_resumo": "Toalha Azul + Kit Decoração Mesa",
+          "valor_total": 220.00,
+          "data_pedido": "2024-01-14T16:45:00Z",
+          "status": "pending"
+        }
+      ]
+    },
+    "upcoming_events": {
+      "endpoint": "GET /api/dashboard/upcoming-events",
+      "response": [
+        {
+          "id": "EVT-001",
+          "cliente": {
+            "id": "CLI-004",
+            "nome": "Carlos Oliveira Santos"
+          },
+          "tipo_evento": "Aniversário Infantil",
+          "data_evento": "2024-01-20",
+          "quantidade_items": 8,
+          "valor_estimado": 420.00,
+          "status": "confirmed"
+        },
+        {
+          "id": "EVT-002",
+          "cliente": {
+            "id": "CLI-005",
+            "nome": "Fernanda Lima Costa"
+          },
+          "tipo_evento": "Casamento",
+          "data_evento": "2024-01-22",
+          "quantidade_items": 15,
+          "valor_estimado": 1250.00,
+          "status": "confirmed"
+        },
+        {
+          "id": "EVT-003",
+          "cliente": {
+            "id": "CLI-006",
+            "nome": "Roberto Silva"
+          },
+          "tipo_evento": "Formatura",
+          "data_evento": "2024-01-25",
+          "quantidade_items": 12,
+          "valor_estimado": 890.00,
+          "status": "pending"
+        }
+      ]
+    }
+  },
+  "products": {
+    "list": {
+      "endpoint": "GET /api/products",
+      "query_params": {
+        "page": 1,
+        "limit": 20,
+        "categoria": "opcional",
+        "disponivel": "true/false opcional",
+        "search": "termo de busca opcional"
+      },
+      "response": {
+        "data": [
+          {
+            "id": "PROD-001",
+            "nome": "Mesa Redonda 1,20m",
+            "descricao": "Mesa redonda de 1,20m ideal para 6 a 8 pessoas. Material resistente e elegante.",
+            "categoria": "Mesas",
+            "foto_url": "https://storage.supabase.co/produtos/mesa-redonda-120.jpg",
+            "disponivel": true,
+            "variacoes": [
+              {
+                "id": "VAR-001",
+                "nome": "Branca",
+                "preco": 25.00,
+                "quantidade_disponivel": 15,
+                "foto_url": "https://storage.supabase.co/produtos/mesa-redonda-120-branca.jpg"
+              },
+              {
+                "id": "VAR-002",
+                "nome": "Madeira",
+                "preco": 30.00,
+                "quantidade_disponivel": 8,
+                "foto_url": "https://storage.supabase.co/produtos/mesa-redonda-120-madeira.jpg"
+              }
+            ],
+            "created_at": "2024-01-01T10:00:00Z",
+            "updated_at": "2024-01-15T14:30:00Z"
+          },
+          {
+            "id": "PROD-002",
+            "nome": "Cadeira Tiffany",
+            "descricao": "Cadeira Tiffany elegante e confortável, ideal para eventos sociais.",
+            "categoria": "Cadeiras",
+            "foto_url": "https://storage.supabase.co/produtos/cadeira-tiffany.jpg",
+            "disponivel": true,
+            "variacoes": [
+              {
+                "id": "VAR-003",
+                "nome": "Transparente",
+                "preco": 8.00,
+                "quantidade_disponivel": 50,
+                "foto_url": "https://storage.supabase.co/produtos/cadeira-tiffany-transparente.jpg"
+              },
+              {
+                "id": "VAR-004",
+                "nome": "Dourada",
+                "preco": 10.00,
+                "quantidade_disponivel": 30,
+                "foto_url": "https://storage.supabase.co/produtos/cadeira-tiffany-dourada.jpg"
+              },
+              {
+                "id": "VAR-005",
+                "nome": "Prata",
+                "preco": 10.00,
+                "quantidade_disponivel": 25,
+                "foto_url": "https://storage.supabase.co/produtos/cadeira-tiffany-prata.jpg"
+              }
+            ],
+            "created_at": "2024-01-02T10:00:00Z",
+            "updated_at": "2024-01-10T16:20:00Z"
+          },
+          {
+            "id": "PROD-003",
+            "nome": "Toalha de Mesa Redonda",
+            "descricao": "Toalha de mesa redonda de alta qualidade, disponível em várias cores.",
+            "categoria": "Toalhas",
+            "foto_url": "https://storage.supabase.co/produtos/toalha-mesa-redonda.jpg",
+            "disponivel": true,
+            "variacoes": [
+              {
+                "id": "VAR-006",
+                "nome": "Branca",
+                "preco": 15.00,
+                "quantidade_disponivel": 20,
+                "foto_url": "https://storage.supabase.co/produtos/toalha-mesa-branca.jpg"
+              },
+              {
+                "id": "VAR-007",
+                "nome": "Azul",
+                "preco": 15.00,
+                "quantidade_disponivel": 12,
+                "foto_url": "https://storage.supabase.co/produtos/toalha-mesa-azul.jpg"
+              },
+              {
+                "id": "VAR-008",
+                "nome": "Rosa",
+                "preco": 15.00,
+                "quantidade_disponivel": 8,
+                "foto_url": "https://storage.supabase.co/produtos/toalha-mesa-rosa.jpg"
+              },
+              {
+                "id": "VAR-009",
+                "nome": "Preta",
+                "preco": 18.00,
+                "quantidade_disponivel": 15,
+                "foto_url": "https://storage.supabase.co/produtos/toalha-mesa-preta.jpg"
+              }
+            ],
+            "created_at": "2024-01-03T10:00:00Z",
+            "updated_at": "2024-01-12T11:45:00Z"
+          }
+        ],
+        "pagination": {
+          "current_page": 1,
+          "total_pages": 3,
+          "total_items": 45,
+          "items_per_page": 20
+        }
+      }
+    },
+    "create": {
+      "endpoint": "POST /api/products",
+      "request_body": {
+        "nome": "Mesa Quadrada 1,5m",
+        "descricao": "Mesa quadrada de 1,5m para 8 pessoas",
+        "categoria": "Mesas",
+        "foto": "arquivo_de_imagem.jpg (multipart/form-data)",
+        "variacoes": [
+          {
+            "nome": "Branca",
+            "preco": 35.00,
+            "quantidade_disponivel": 10
+          },
+          {
+            "nome": "Madeira Clara",
+            "preco": 40.00,
+            "quantidade_disponivel": 5
+          }
+        ]
+      },
+      "response": {
+        "success": true,
+        "message": "Produto criado com sucesso",
+        "data": {
+          "id": "PROD-004",
+          "nome": "Mesa Quadrada 1,5m",
+          "descricao": "Mesa quadrada de 1,5m para 8 pessoas",
+          "categoria": "Mesas",
+          "foto_url": "https://storage.supabase.co/produtos/mesa-quadrada-150.jpg",
+          "disponivel": true,
+          "variacoes": [
+            {
+              "id": "VAR-010",
+              "nome": "Branca",
+              "preco": 35.00,
+              "quantidade_disponivel": 10,
+              "foto_url": "https://storage.supabase.co/produtos/mesa-quadrada-150-branca.jpg"
+            }
+          ],
+          "created_at": "2024-01-16T10:00:00Z",
+          "updated_at": "2024-01-16T10:00:00Z"
+        }
+      }
+    },
+    "categories": {
+      "endpoint": "GET /api/products/categories",
+      "response": [
+        {
+          "id": "CAT-001",
+          "nome": "Mesas",
+          "descricao": "Mesas redondas e quadradas",
+          "quantidade_produtos": 12
+        },
+        {
+          "id": "CAT-002",
+          "nome": "Cadeiras",
+          "descricao": "Cadeiras Tiffany e outras",
+          "quantidade_produtos": 8
+        },
+        {
+          "id": "CAT-003",
+          "nome": "Toalhas",
+          "descricao": "Toalhas de mesa diversos tamanhos",
+          "quantidade_produtos": 15
+        },
+        {
+          "id": "CAT-004",
+          "nome": "Louças",
+          "descricao": "Pratos, copos e talheres",
+          "quantidade_produtos": 20
+        },
+        {
+          "id": "CAT-005",
+          "nome": "Decoração",
+          "descricao": "Itens decorativos diversos",
+          "quantidade_produtos": 10
+        }
+      ]
+    }
+  },
+  "clients": {
+    "list": {
+      "endpoint": "GET /api/clients",
+      "query_params": {
+        "page": 1,
+        "limit": 20,
+        "search": "termo de busca opcional",
+        "orderBy": "nome|created_at|data_nascimento",
+        "order": "asc|desc"
+      },
+      "response": {
+        "data": [
+          {
+            "id": "CLI-001",
+            "nome": "Maria Silva Santos",
+            "email": "maria.santos@email.com",
+            "telefone": "(11) 99999-8888",
+            "cpf": "123.456.789-00",
+            "data_nascimento": "1985-06-15",
+            "endereco": {
+              "logradouro": "Rua das Flores",
+              "numero": "123",
+              "complemento": "Apto 45",
+              "bairro": "Centro",
+              "cidade": "São Paulo",
+              "estado": "SP",
+              "cep": "01234-567",
+              "endereco_completo": "Rua das Flores, 123, Apto 45, Centro, São Paulo - SP, 01234-567"
+            },
+            "coordenadas": {
+              "latitude": -23.5505,
+              "longitude": -46.6333
+            },
+            "contato_emergencia": {
+              "nome": "João Santos",
+              "telefone": "(11) 88888-7777",
+              "parentesco": "Marido"
+            },
+            "observacoes": "Cliente preferencial, sempre paga em dia",
+            "ativo": true,
+            "total_pedidos": 5,
+            "valor_total_gasto": 2150.00,
+            "ultimo_pedido": "2024-01-10T14:30:00Z",
+            "created_at": "2023-08-15T10:00:00Z",
+            "updated_at": "2024-01-15T16:20:00Z"
+          },
+          {
+            "id": "CLI-002",
+            "nome": "João Santos Oliveira",
+            "email": "joao.oliveira@email.com",
+            "telefone": "(11) 88888-7777",
+            "cpf": "987.654.321-00",
+            "data_nascimento": "1980-03-22",
+            "endereco": {
+              "logradouro": "Av. Paulista",
+              "numero": "1000",
+              "complemento": "Conjunto 45",
+              "bairro": "Bela Vista",
+              "cidade": "São Paulo",
+              "estado": "SP",
+              "cep": "01310-100",
+              "endereco_completo": "Av. Paulista, 1000, Conjunto 45, Bela Vista, São Paulo - SP, 01310-100"
+            },
+            "coordenadas": {
+              "latitude": -23.5629,
+              "longitude": -46.6544
+            },
+            "contato_emergencia": {
+              "nome": "Maria Oliveira",
+              "telefone": "(11) 77777-6666",
+              "parentesco": "Esposa"
+            },
+            "observacoes": "",
+            "ativo": true,
+            "total_pedidos": 3,
+            "valor_total_gasto": 890.50,
+            "ultimo_pedido": "2024-01-05T09:15:00Z",
+            "created_at": "2023-10-20T14:30:00Z",
+            "updated_at": "2024-01-05T09:15:00Z"
+          },
+          {
+            "id": "CLI-003",
+            "nome": "Ana Costa Lima",
+            "email": "ana.lima@email.com",
+            "telefone": "(11) 77777-6666",
+            "cpf": "456.789.123-00",
+            "data_nascimento": "1992-11-08",
+            "endereco": {
+              "logradouro": "Rua Augusta",
+              "numero": "2500",
+              "complemento": "",
+              "bairro": "Consolação",
+              "cidade": "São Paulo",
+              "estado": "SP",
+              "cep": "01412-100",
+              "endereco_completo": "Rua Augusta, 2500, Consolação, São Paulo - SP, 01412-100"
+            },
+            "coordenadas": {
+              "latitude": -23.5558,
+              "longitude": -46.6622
+            },
+            "contato_emergencia": {
+              "nome": "Pedro Lima",
+              "telefone": "(11) 66666-5555",
+              "parentesco": "Irmão"
+            },
+            "observacoes": "Prefere eventos no período da tarde",
+            "ativo": true,
+            "total_pedidos": 7,
+            "valor_total_gasto": 3250.00,
+            "ultimo_pedido": "2024-01-12T11:45:00Z",
+            "created_at": "2023-05-10T08:20:00Z",
+            "updated_at": "2024-01-12T11:45:00Z"
+          }
+        ],
+        "pagination": {
+          "current_page": 1,
+          "total_pages": 8,
+          "total_items": 156,
+          "items_per_page": 20
+        }
+      }
+    },
+    "create": {
+      "endpoint": "POST /api/clients",
+      "request_body": {
+        "nome": "Carlos Roberto Silva",
+        "email": "carlos.silva@email.com",
+        "telefone": "(11) 66666-5555",
+        "cpf": "789.123.456-00",
+        "data_nascimento": "1988-07-30",
+        "endereco": {
+          "logradouro": "Rua da Liberdade",
+          "numero": "500",
+          "complemento": "Casa 2",
+          "bairro": "Liberdade",
+          "cidade": "São Paulo",
+          "estado": "SP",
+          "cep": "01503-001"
+        },
+        "coordenadas": {
+          "latitude": -23.5585,
+          "longitude": -46.6340
+        },
+        "contato_emergencia": {
+          "nome": "Sandra Silva",
+          "telefone": "(11) 55555-4444",
+          "parentesco": "Esposa"
+        },
+        "observacoes": "Cliente novo, primeiro evento"
+      },
+      "response": {
+        "success": true,
+        "message": "Cliente criado com sucesso",
+        "data": {
+          "id": "CLI-157",
+          "nome": "Carlos Roberto Silva",
+          "email": "carlos.silva@email.com",
+          "telefone": "(11) 66666-5555",
+          "cpf": "789.123.456-00",
+          "data_nascimento": "1988-07-30",
+          "endereco": {
+            "logradouro": "Rua da Liberdade",
+            "numero": "500",
+            "complemento": "Casa 2",
+            "bairro": "Liberdade",
+            "cidade": "São Paulo",
+            "estado": "SP",
+            "cep": "01503-001",
+            "endereco_completo": "Rua da Liberdade, 500, Casa 2, Liberdade, São Paulo - SP, 01503-001"
+          },
+          "coordenadas": {
+            "latitude": -23.5585,
+            "longitude": -46.6340
+          },
+          "contato_emergencia": {
+            "nome": "Sandra Silva",
+            "telefone": "(11) 55555-4444",
+            "parentesco": "Esposa"
+          },
+          "observacoes": "Cliente novo, primeiro evento",
+          "ativo": true,
+          "total_pedidos": 0,
+          "valor_total_gasto": 0.00,
+          "ultimo_pedido": null,
+          "created_at": "2024-01-16T10:30:00Z",
+          "updated_at": "2024-01-16T10:30:00Z"
+        }
+      }
+    },
+    "by_id": {
+      "endpoint": "GET /api/clients/{id}",
+      "response": {
+        "id": "CLI-001",
+        "nome": "Maria Silva Santos",
+        "email": "maria.santos@email.com",
+        "telefone": "(11) 99999-8888",
+        "cpf": "123.456.789-00",
+        "data_nascimento": "1985-06-15",
+        "endereco": {
+          "logradouro": "Rua das Flores",
+          "numero": "123",
+          "complemento": "Apto 45",
+          "bairro": "Centro",
+          "cidade": "São Paulo",
+          "estado": "SP",
+          "cep": "01234-567",
+          "endereco_completo": "Rua das Flores, 123, Apto 45, Centro, São Paulo - SP, 01234-567"
+        },
+        "coordenadas": {
+          "latitude": -23.5505,
+          "longitude": -46.6333
+        },
+        "contato_emergencia": {
+          "nome": "João Santos",
+          "telefone": "(11) 88888-7777",
+          "parentesco": "Marido"
+        },
+        "observacoes": "Cliente preferencial, sempre paga em dia",
+        "ativo": true,
+        "total_pedidos": 5,
+        "valor_total_gasto": 2150.00,
+        "ultimo_pedido": "2024-01-10T14:30:00Z",
+        "historico_pedidos": [
+          {
+            "id": "ORD-2024-001",
+            "data_pedido": "2024-01-10T14:30:00Z",
+            "valor_total": 450.00,
+            "status": "delivered",
+            "data_evento": "2024-01-12"
+          },
+          {
+            "id": "ORD-2023-089",
+            "data_pedido": "2023-12-15T10:20:00Z",
+            "valor_total": 320.00,
+            "status": "returned",
+            "data_evento": "2023-12-20"
+          }
+        ],
+        "created_at": "2023-08-15T10:00:00Z",
+        "updated_at": "2024-01-15T16:20:00Z"
+      }
+    }
+  }
+}
