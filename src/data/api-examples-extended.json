@@ -1,0 +1,1029 @@
+{
+  "orders": {
+    "list": {
+      "endpoint": "GET /api/orders",
+      "query_params": {
+        "page": 1,
+        "limit": 20,
+        "status": "pending|confirmed|delivered|returned|cancelled",
+        "client_id": "opcional",
+        "date_from": "YYYY-MM-DD opcional",
+        "date_to": "YYYY-MM-DD opcional",
+        "search": "termo de busca opcional"
+      },
+      "response": {
+        "data": [
+          {
+            "id": "ORD-2024-001",
+            "numero_pedido": "2024001",
+            "cliente": {
+              "id": "CLI-001",
+              "nome": "Maria Silva Santos",
+              "telefone": "(11) 99999-8888",
+              "email": "maria.santos@email.com"
+            },
+            "items": [
+              {
+                "id": "ITEM-001",
+                "produto": {
+                  "id": "PROD-001",
+                  "nome": "Mesa Redonda 1,20m",
+                  "categoria": "Mesas"
+                },
+                "variacao": {
+                  "id": "VAR-001",
+                  "nome": "Branca",
+                  "preco_unitario": 25.00
+                },
+                "quantidade": 5,
+                "preco_total": 125.00,
+                "observacoes": "Mesa para área externa"
+              },
+              {
+                "id": "ITEM-002",
+                "produto": {
+                  "id": "PROD-002",
+                  "nome": "Cadeira Tiffany",
+                  "categoria": "Cadeiras"
+                },
+                "variacao": {
+                  "id": "VAR-003",
+                  "nome": "Transparente",
+                  "preco_unitario": 8.00
+                },
+                "quantidade": 30,
+                "preco_total": 240.00,
+                "observacoes": ""
+              }
+            ],
+            "data_evento": "2024-08-15",
+            "horario_entrega": "08:00",
+            "data_devolucao": "2024-08-16",
+            "horario_devolucao": "18:00",
+            "endereco_entrega": {
+              "logradouro": "Rua das Festas",
+              "numero": "500",
+              "complemento": "Salão de Eventos",
+              "bairro": "Centro",
+              "cidade": "São Paulo",
+              "estado": "SP",
+              "cep": "01234-567",
+              "endereco_completo": "Rua das Festas, 500, Salão de Eventos, Centro, São Paulo - SP"
+            },
+            "status": "confirmed",
+            "valor_subtotal": 365.00,
+            "taxa_entrega": 50.00,
+            "desconto": 15.00,
+            "valor_total": 400.00,
+            "forma_pagamento": "pix",
+            "status_pagamento": "paid",
+            "observacoes": "Casamento no jardim - cuidado com as toalhas brancas",
+            "created_at": "2024-08-01T10:00:00Z",
+            "updated_at": "2024-08-02T14:30:00Z"
+          },
+          {
+            "id": "ORD-2024-002",
+            "numero_pedido": "2024002",
+            "cliente": {
+              "id": "CLI-002",
+              "nome": "João Santos Oliveira",
+              "telefone": "(11) 88888-7777",
+              "email": "joao.oliveira@email.com"
+            },
+            "items": [
+              {
+                "id": "ITEM-003",
+                "produto": {
+                  "id": "PROD-004",
+                  "nome": "Prato de Sobremesa",
+                  "categoria": "Louças"
+                },
+                "variacao": {
+                  "id": "VAR-010",
+                  "nome": "Branco",
+                  "preco_unitario": 2.50
+                },
+                "quantidade": 50,
+                "preco_total": 125.00,
+                "observacoes": ""
+              }
+            ],
+            "data_evento": "2024-09-20",
+            "horario_entrega": "14:00",
+            "data_devolucao": "2024-09-21",
+            "horario_devolucao": "10:00",
+            "endereco_entrega": {
+              "logradouro": "Av. das Palmeiras",
+              "numero": "1200",
+              "complemento": "Casa",
+              "bairro": "Jardins",
+              "cidade": "São Paulo",
+              "estado": "SP",
+              "cep": "01234-890",
+              "endereco_completo": "Av. das Palmeiras, 1200, Casa, Jardins, São Paulo - SP"
+            },
+            "status": "pending",
+            "valor_subtotal": 125.00,
+            "taxa_entrega": 30.00,
+            "desconto": 0.00,
+            "valor_total": 155.00,
+            "forma_pagamento": "cartao_credito",
+            "status_pagamento": "pending",
+            "observacoes": "Aniversário de 50 anos - evento familiar",
+            "created_at": "2024-08-02T14:30:00Z",
+            "updated_at": "2024-08-02T14:30:00Z"
+          }
+        ],
+        "pagination": {
+          "current_page": 1,
+          "total_pages": 5,
+          "total_items": 89,
+          "items_per_page": 20
+        }
+      }
+    },
+    "create": {
+      "endpoint": "POST /api/orders",
+      "request_body": {
+        "cliente_id": "CLI-001",
+        "data_evento": "2024-12-25",
+        "horario_entrega": "08:00",
+        "data_devolucao": "2024-12-26",
+        "horario_devolucao": "18:00",
+        "endereco_entrega": {
+          "logradouro": "Rua dos Eventos",
+          "numero": "123",
+          "complemento": "Salão Azul",
+          "bairro": "Centro",
+          "cidade": "São Paulo",
+          "estado": "SP",
+          "cep": "01234-567"
+        },
+        "items": [
+          {
+            "produto_id": "PROD-001",
+            "variacao_id": "VAR-001",
+            "quantidade": 10,
+            "observacoes": "Mesas para área coberta"
+          },
+          {
+            "produto_id": "PROD-002",
+            "variacao_id": "VAR-003",
+            "quantidade": 60,
+            "observacoes": ""
+          }
+        ],
+        "taxa_entrega": 80.00,
+        "desconto": 25.00,
+        "forma_pagamento": "pix",
+        "observacoes": "Festa de Natal da empresa - evento corporativo"
+      },
+      "response": {
+        "success": true,
+        "message": "Pedido criado com sucesso",
+        "data": {
+          "id": "ORD-2024-090",
+          "numero_pedido": "2024090",
+          "valor_total": 635.00,
+          "status": "pending",
+          "created_at": "2024-08-07T10:30:00Z"
+        }
+      }
+    },
+    "update_status": {
+      "endpoint": "PATCH /api/orders/{id}/status",
+      "request_body": {
+        "status": "confirmed",
+        "observacoes": "Pedido confirmado pelo cliente via telefone"
+      },
+      "response": {
+        "success": true,
+        "message": "Status do pedido atualizado com sucesso",
+        "data": {
+          "id": "ORD-2024-001",
+          "status": "confirmed",
+          "updated_at": "2024-08-07T15:45:00Z"
+        }
+      }
+    }
+  },
+  "reports": {
+    "financial_summary": {
+      "endpoint": "GET /api/reports/financial",
+      "query_params": {
+        "period": "daily|weekly|monthly|yearly",
+        "date_from": "YYYY-MM-DD",
+        "date_to": "YYYY-MM-DD"
+      },
+      "response": {
+        "periodo": {
+          "inicio": "2024-01-01",
+          "fim": "2024-01-31",
+          "descricao": "Janeiro 2024"
+        },
+        "resumo_financeiro": {
+          "receita_total": 45231.50,
+          "receita_bruta": 48156.75,
+          "descontos_aplicados": 2925.25,
+          "taxa_entrega_total": 3420.00,
+          "ticket_medio": 287.50,
+          "total_pedidos": 157,
+          "pedidos_pagos": 145,
+          "pedidos_pendentes": 12
+        },
+        "receita_por_categoria": [
+          {
+            "categoria": "Mesas",
+            "receita": 18500.00,
+            "percentual": 40.9,
+            "quantidade_itens": 450
+          },
+          {
+            "categoria": "Cadeiras",
+            "receita": 12350.00,
+            "percentual": 27.3,
+            "quantidade_itens": 1580
+          },
+          {
+            "categoria": "Toalhas",
+            "receita": 8200.00,
+            "percentual": 18.1,
+            "quantidade_itens": 520
+          },
+          {
+            "categoria": "Louças",
+            "receita": 4181.50,
+            "percentual": 9.2,
+            "quantidade_itens": 2100
+          },
+          {
+            "categoria": "Decoração",
+            "receita": 2000.00,
+            "percentual": 4.4,
+            "quantidade_itens": 150
+          }
+        ],
+        "evolucao_diaria": [
+          {
+            "data": "2024-01-01",
+            "receita": 1250.00,
+            "pedidos": 4
+          },
+          {
+            "data": "2024-01-02",
+            "receita": 2180.50,
+            "pedidos": 7
+          },
+          {
+            "data": "2024-01-03",
+            "receita": 890.00,
+            "pedidos": 3
+          }
+        ]
+      }
+    },
+    "product_performance": {
+      "endpoint": "GET /api/reports/products",
+      "query_params": {
+        "date_from": "YYYY-MM-DD",
+        "date_to": "YYYY-MM-DD",
+        "categoria": "opcional"
+      },
+      "response": {
+        "produtos_mais_alugados": [
+          {
+            "produto": {
+              "id": "PROD-002",
+              "nome": "Cadeira Tiffany",
+              "categoria": "Cadeiras"
+            },
+            "total_aluguel": 1580,
+            "receita_gerada": 12350.00,
+            "variacao_mais_popular": "Transparente",
+            "frequencia_uso": 89.5
+          },
+          {
+            "produto": {
+              "id": "PROD-001",
+              "nome": "Mesa Redonda 1,20m",
+              "categoria": "Mesas"
+            },
+            "total_aluguel": 450,
+            "receita_gerada": 11250.00,
+            "variacao_mais_popular": "Branca",
+            "frequencia_uso": 76.2
+          }
+        ],
+        "produtos_menos_alugados": [
+          {
+            "produto": {
+              "id": "PROD-015",
+              "nome": "Taça de Cristal",
+              "categoria": "Copos"
+            },
+            "total_aluguel": 12,
+            "receita_gerada": 180.00,
+            "variacao_mais_popular": "Transparente",
+            "frequencia_uso": 5.2
+          }
+        ],
+        "disponibilidade_estoque": [
+          {
+            "produto": {
+              "id": "PROD-001",
+              "nome": "Mesa Redonda 1,20m"
+            },
+            "variacoes": [
+              {
+                "nome": "Branca",
+                "total": 20,
+                "disponivel": 15,
+                "em_uso": 5,
+                "percentual_disponibilidade": 75.0
+              },
+              {
+                "nome": "Madeira",
+                "total": 10,
+                "disponivel": 2,
+                "em_uso": 8,
+                "percentual_disponibilidade": 20.0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "client_analysis": {
+      "endpoint": "GET /api/reports/clients",
+      "query_params": {
+        "date_from": "YYYY-MM-DD",
+        "date_to": "YYYY-MM-DD"
+      },
+      "response": {
+        "clientes_mais_ativos": [
+          {
+            "cliente": {
+              "id": "CLI-001",
+              "nome": "Maria Silva Santos",
+              "telefone": "(11) 99999-8888"
+            },
+            "total_pedidos": 12,
+            "valor_total_gasto": 5420.00,
+            "ticket_medio": 451.67,
+            "ultimo_pedido": "2024-01-15T10:30:00Z"
+          },
+          {
+            "cliente": {
+              "id": "CLI-003",
+              "nome": "Ana Costa Lima",
+              "telefone": "(11) 77777-6666"
+            },
+            "total_pedidos": 8,
+            "valor_total_gasto": 3250.00,
+            "ticket_medio": 406.25,
+            "ultimo_pedido": "2024-01-12T14:20:00Z"
+          }
+        ],
+        "novos_clientes": [
+          {
+            "cliente": {
+              "id": "CLI-156",
+              "nome": "Roberto Santos",
+              "telefone": "(11) 55555-4444"
+            },
+            "data_cadastro": "2024-01-25T09:15:00Z",
+            "primeiro_pedido": "2024-01-28T16:30:00Z",
+            "valor_primeiro_pedido": 280.00
+          }
+        ],
+        "clientes_inativos": [
+          {
+            "cliente": {
+              "id": "CLI-045",
+              "nome": "Pedro Oliveira",
+              "telefone": "(11) 44444-3333"
+            },
+            "ultimo_pedido": "2023-08-15T10:20:00Z",
+            "dias_inativo": 145,
+            "total_historico": 2150.00
+          }
+        ]
+      }
+    }
+  },
+  "admins": {
+    "list": {
+      "endpoint": "GET /api/admins",
+      "query_params": {
+        "page": 1,
+        "limit": 20,
+        "ativo": "true|false opcional",
+        "search": "termo de busca opcional"
+      },
+      "response": {
+        "data": [
+          {
+            "id": "ADM-001",
+            "nome": "João Silva Administrador",
+            "email": "joao.admin@empresa.com",
+            "telefone": "(11) 99999-0000",
+            "cpf": "111.222.333-44",
+            "cargo": "Administrador Geral",
+            "permissoes": [
+              "orders.read",
+              "orders.write",
+              "orders.delete",
+              "products.read",
+              "products.write",
+              "products.delete",
+              "clients.read",
+              "clients.write",
+              "clients.delete",
+              "reports.read",
+              "admins.read",
+              "admins.write",
+              "settings.read",
+              "settings.write"
+            ],
+            "ativo": true,
+            "ultimo_acesso": "2024-08-07T09:30:00Z",
+            "data_criacao": "2023-01-15T10:00:00Z",
+            "criado_por": "SYSTEM",
+            "avatar_url": "https://storage.supabase.co/avatars/admin-001.jpg"
+          },
+          {
+            "id": "ADM-002",
+            "nome": "Maria Costa Operadora",
+            "email": "maria.operadora@empresa.com",
+            "telefone": "(11) 88888-1111",
+            "cpf": "222.333.444-55",
+            "cargo": "Operadora",
+            "permissoes": [
+              "orders.read",
+              "orders.write",
+              "products.read",
+              "clients.read",
+              "clients.write",
+              "reports.read"
+            ],
+            "ativo": true,
+            "ultimo_acesso": "2024-08-07T14:15:00Z",
+            "data_criacao": "2023-06-20T14:30:00Z",
+            "criado_por": "ADM-001",
+            "avatar_url": "https://storage.supabase.co/avatars/admin-002.jpg"
+          },
+          {
+            "id": "ADM-003",
+            "nome": "Carlos Santos Financeiro",
+            "email": "carlos.financeiro@empresa.com",
+            "telefone": "(11) 77777-2222",
+            "cpf": "333.444.555-66",
+            "cargo": "Analista Financeiro",
+            "permissoes": [
+              "orders.read",
+              "reports.read",
+              "clients.read"
+            ],
+            "ativo": false,
+            "ultimo_acesso": "2024-07-15T16:45:00Z",
+            "data_criacao": "2023-08-10T11:20:00Z",
+            "criado_por": "ADM-001",
+            "avatar_url": null
+          }
+        ],
+        "pagination": {
+          "current_page": 1,
+          "total_pages": 1,
+          "total_items": 3,
+          "items_per_page": 20
+        }
+      }
+    },
+    "create": {
+      "endpoint": "POST /api/admins",
+      "request_body": {
+        "nome": "Ana Oliveira Suporte",
+        "email": "ana.suporte@empresa.com",
+        "telefone": "(11) 66666-3333",
+        "cpf": "444.555.666-77",
+        "cargo": "Suporte",
+        "senha": "senha_temporaria_123",
+        "permissoes": [
+          "orders.read",
+          "products.read",
+          "clients.read",
+          "clients.write"
+        ],
+        "avatar": "arquivo_de_imagem.jpg (multipart/form-data opcional)"
+      },
+      "response": {
+        "success": true,
+        "message": "Administrador criado com sucesso",
+        "data": {
+          "id": "ADM-004",
+          "nome": "Ana Oliveira Suporte",
+          "email": "ana.suporte@empresa.com",
+          "telefone": "(11) 66666-3333",
+          "cpf": "444.555.666-77",
+          "cargo": "Suporte",
+          "permissoes": [
+            "orders.read",
+            "products.read",
+            "clients.read",
+            "clients.write"
+          ],
+          "ativo": true,
+          "ultimo_acesso": null,
+          "data_criacao": "2024-08-07T16:30:00Z",
+          "criado_por": "ADM-001",
+          "avatar_url": "https://storage.supabase.co/avatars/admin-004.jpg",
+          "senha_temporaria": "senha_temporaria_123"
+        }
+      }
+    },
+    "update": {
+      "endpoint": "PUT /api/admins/{id}",
+      "request_body": {
+        "nome": "Ana Oliveira Coordenadora",
+        "telefone": "(11) 66666-4444",
+        "cargo": "Coordenadora de Suporte",
+        "permissoes": [
+          "orders.read",
+          "orders.write",
+          "products.read",
+          "clients.read",
+          "clients.write",
+          "reports.read"
+        ],
+        "ativo": true
+      },
+      "response": {
+        "success": true,
+        "message": "Administrador atualizado com sucesso",
+        "data": {
+          "id": "ADM-004",
+          "nome": "Ana Oliveira Coordenadora",
+          "telefone": "(11) 66666-4444",
+          "cargo": "Coordenadora de Suporte",
+          "permissoes": [
+            "orders.read",
+            "orders.write",
+            "products.read",
+            "clients.read",
+            "clients.write",
+            "reports.read"
+          ],
+          "updated_at": "2024-08-07T17:15:00Z"
+        }
+      }
+    },
+    "permissions": {
+      "endpoint": "GET /api/admins/permissions",
+      "response": [
+        {
+          "modulo": "orders",
+          "nome": "Pedidos",
+          "permissoes": [
+            {
+              "codigo": "orders.read",
+              "nome": "Visualizar Pedidos",
+              "descricao": "Permite visualizar todos os pedidos"
+            },
+            {
+              "codigo": "orders.write",
+              "nome": "Criar/Editar Pedidos",
+              "descricao": "Permite criar e editar pedidos"
+            },
+            {
+              "codigo": "orders.delete",
+              "nome": "Excluir Pedidos",
+              "descricao": "Permite excluir pedidos"
+            }
+          ]
+        },
+        {
+          "modulo": "products",
+          "nome": "Produtos",
+          "permissoes": [
+            {
+              "codigo": "products.read",
+              "nome": "Visualizar Produtos",
+              "descricao": "Permite visualizar catálogo de produtos"
+            },
+            {
+              "codigo": "products.write",
+              "nome": "Gerenciar Produtos",
+              "descricao": "Permite criar, editar produtos e variações"
+            },
+            {
+              "codigo": "products.delete",
+              "nome": "Excluir Produtos",
+              "descricao": "Permite excluir produtos do sistema"
+            }
+          ]
+        },
+        {
+          "modulo": "clients",
+          "nome": "Clientes",
+          "permissoes": [
+            {
+              "codigo": "clients.read",
+              "nome": "Visualizar Clientes",
+              "descricao": "Permite visualizar dados dos clientes"
+            },
+            {
+              "codigo": "clients.write",
+              "nome": "Gerenciar Clientes",
+              "descricao": "Permite criar e editar clientes"
+            },
+            {
+              "codigo": "clients.delete",
+              "nome": "Excluir Clientes",
+              "descricao": "Permite remover clientes do sistema"
+            }
+          ]
+        },
+        {
+          "modulo": "reports",
+          "nome": "Relatórios",
+          "permissoes": [
+            {
+              "codigo": "reports.read",
+              "nome": "Visualizar Relatórios",
+              "descricao": "Permite acessar relatórios e dashboards"
+            }
+          ]
+        },
+        {
+          "modulo": "admins",
+          "nome": "Administradores",
+          "permissoes": [
+            {
+              "codigo": "admins.read",
+              "nome": "Visualizar Administradores",
+              "descricao": "Permite visualizar lista de administradores"
+            },
+            {
+              "codigo": "admins.write",
+              "nome": "Gerenciar Administradores",
+              "descricao": "Permite criar e editar administradores"
+            }
+          ]
+        },
+        {
+          "modulo": "settings",
+          "nome": "Configurações",
+          "permissoes": [
+            {
+              "codigo": "settings.read",
+              "nome": "Visualizar Configurações",
+              "descricao": "Permite visualizar configurações do sistema"
+            },
+            {
+              "codigo": "settings.write",
+              "nome": "Alterar Configurações",
+              "descricao": "Permite modificar configurações do sistema"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "settings": {
+    "company": {
+      "endpoint": "GET /api/settings/company",
+      "response": {
+        "informacoes_basicas": {
+          "razao_social": "Festa & Cia Locações Ltda",
+          "nome_fantasia": "Festa & Cia",
+          "cnpj": "12.345.678/0001-90",
+          "inscricao_estadual": "123.456.789.012",
+          "telefone": "(11) 3333-4444",
+          "email": "contato@festaecia.com.br",
+          "website": "www.festaecia.com.br"
+        },
+        "endereco": {
+          "logradouro": "Rua dos Eventos",
+          "numero": "1000",
+          "complemento": "Galpão A",
+          "bairro": "Industrial",
+          "cidade": "São Paulo",
+          "estado": "SP",
+          "cep": "01234-567",
+          "endereco_completo": "Rua dos Eventos, 1000, Galpão A, Industrial, São Paulo - SP, 01234-567"
+        },
+        "horario_funcionamento": {
+          "segunda": {
+            "abertura": "08:00",
+            "fechamento": "18:00",
+            "ativo": true
+          },
+          "terca": {
+            "abertura": "08:00",
+            "fechamento": "18:00",
+            "ativo": true
+          },
+          "quarta": {
+            "abertura": "08:00",
+            "fechamento": "18:00",
+            "ativo": true
+          },
+          "quinta": {
+            "abertura": "08:00",
+            "fechamento": "18:00",
+            "ativo": true
+          },
+          "sexta": {
+            "abertura": "08:00",
+            "fechamento": "18:00",
+            "ativo": true
+          },
+          "sabado": {
+            "abertura": "08:00",
+            "fechamento": "16:00",
+            "ativo": true
+          },
+          "domingo": {
+            "abertura": "00:00",
+            "fechamento": "00:00",
+            "ativo": false
+          }
+        },
+        "logo_url": "https://storage.supabase.co/company/logo.png",
+        "updated_at": "2024-07-15T10:30:00Z"
+      }
+    },
+    "update_company": {
+      "endpoint": "PUT /api/settings/company",
+      "request_body": {
+        "informacoes_basicas": {
+          "razao_social": "Festa & Cia Locações Ltda",
+          "nome_fantasia": "Festa & Cia Premium",
+          "cnpj": "12.345.678/0001-90",
+          "inscricao_estadual": "123.456.789.012",
+          "telefone": "(11) 3333-5555",
+          "email": "contato@festaecia.com.br",
+          "website": "www.festaecia.com.br"
+        },
+        "endereco": {
+          "logradouro": "Rua dos Eventos",
+          "numero": "1000",
+          "complemento": "Galpão A e B",
+          "bairro": "Industrial",
+          "cidade": "São Paulo",
+          "estado": "SP",
+          "cep": "01234-567"
+        },
+        "horario_funcionamento": {
+          "segunda": {
+            "abertura": "08:00",
+            "fechamento": "19:00",
+            "ativo": true
+          },
+          "terca": {
+            "abertura": "08:00",
+            "fechamento": "19:00",
+            "ativo": true
+          },
+          "quarta": {
+            "abertura": "08:00",
+            "fechamento": "19:00",
+            "ativo": true
+          },
+          "quinta": {
+            "abertura": "08:00",
+            "fechamento": "19:00",
+            "ativo": true
+          },
+          "sexta": {
+            "abertura": "08:00",
+            "fechamento": "19:00",
+            "ativo": true
+          },
+          "sabado": {
+            "abertura": "08:00",
+            "fechamento": "17:00",
+            "ativo": true
+          },
+          "domingo": {
+            "abertura": "09:00",
+            "fechamento": "15:00",
+            "ativo": true
+          }
+        },
+        "logo": "arquivo_de_imagem.jpg (multipart/form-data opcional)"
+      },
+      "response": {
+        "success": true,
+        "message": "Configurações da empresa atualizadas com sucesso",
+        "data": {
+          "updated_at": "2024-08-07T16:45:00Z",
+          "logo_url": "https://storage.supabase.co/company/logo-new.png"
+        }
+      }
+    },
+    "pricing": {
+      "endpoint": "GET /api/settings/pricing",
+      "response": {
+        "configuracoes_preco": {
+          "taxa_entrega_padrao": 50.00,
+          "taxa_entrega_minima": 20.00,
+          "taxa_entrega_maxima": 200.00,
+          "valor_minimo_pedido": 100.00,
+          "desconto_maximo_permitido": 15.0,
+          "acrescimo_fim_semana": 10.0,
+          "acrescimo_feriado": 20.0
+        },
+        "formas_pagamento": [
+          {
+            "tipo": "pix",
+            "nome": "PIX",
+            "ativo": true,
+            "desconto": 5.0,
+            "observacoes": "Desconto de 5% para pagamento via PIX"
+          },
+          {
+            "tipo": "dinheiro",
+            "nome": "Dinheiro",
+            "ativo": true,
+            "desconto": 3.0,
+            "observacoes": "Desconto de 3% para pagamento em dinheiro"
+          },
+          {
+            "tipo": "cartao_credito",
+            "nome": "Cartão de Crédito",
+            "ativo": true,
+            "desconto": 0.0,
+            "observacoes": "Sem desconto"
+          },
+          {
+            "tipo": "cartao_debito",
+            "nome": "Cartão de Débito",
+            "ativo": true,
+            "desconto": 2.0,
+            "observacoes": "Desconto de 2% para cartão de débito"
+          },
+          {
+            "tipo": "transferencia",
+            "nome": "Transferência Bancária",
+            "ativo": false,
+            "desconto": 4.0,
+            "observacoes": "Atualmente desabilitado"
+          }
+        ],
+        "updated_at": "2024-07-20T14:20:00Z"
+      }
+    },
+    "update_pricing": {
+      "endpoint": "PUT /api/settings/pricing",
+      "request_body": {
+        "configuracoes_preco": {
+          "taxa_entrega_padrao": 60.00,
+          "taxa_entrega_minima": 25.00,
+          "taxa_entrega_maxima": 250.00,
+          "valor_minimo_pedido": 120.00,
+          "desconto_maximo_permitido": 20.0,
+          "acrescimo_fim_semana": 15.0,
+          "acrescimo_feriado": 25.0
+        },
+        "formas_pagamento": [
+          {
+            "tipo": "pix",
+            "nome": "PIX",
+            "ativo": true,
+            "desconto": 7.0,
+            "observacoes": "Desconto de 7% para pagamento via PIX"
+          },
+          {
+            "tipo": "dinheiro",
+            "nome": "Dinheiro",
+            "ativo": true,
+            "desconto": 5.0,
+            "observacoes": "Desconto de 5% para pagamento em dinheiro"
+          },
+          {
+            "tipo": "cartao_credito",
+            "nome": "Cartão de Crédito",
+            "ativo": true,
+            "desconto": 0.0,
+            "observacoes": "Sem desconto"
+          },
+          {
+            "tipo": "cartao_debito",
+            "nome": "Cartão de Débito",
+            "ativo": true,
+            "desconto": 3.0,
+            "observacoes": "Desconto de 3% para cartão de débito"
+          },
+          {
+            "tipo": "transferencia",
+            "nome": "Transferência Bancária",
+            "ativo": true,
+            "desconto": 6.0,
+            "observacoes": "Ativado novamente com desconto aumentado"
+          }
+        ]
+      },
+      "response": {
+        "success": true,
+        "message": "Configurações de preços atualizadas com sucesso",
+        "data": {
+          "updated_at": "2024-08-07T17:30:00Z"
+        }
+      }
+    },
+    "notifications": {
+      "endpoint": "GET /api/settings/notifications",
+      "response": {
+        "email_notifications": {
+          "novo_pedido": {
+            "ativo": true,
+            "destinatarios": ["admin@festaecia.com.br", "operador@festaecia.com.br"]
+          },
+          "pedido_confirmado": {
+            "ativo": true,
+            "destinatarios": ["admin@festaecia.com.br"]
+          },
+          "pedido_entregue": {
+            "ativo": false,
+            "destinatarios": ["admin@festaecia.com.br"]
+          },
+          "pedido_devolvido": {
+            "ativo": true,
+            "destinatarios": ["admin@festaecia.com.br", "operador@festaecia.com.br"]
+          },
+          "relatorio_diario": {
+            "ativo": true,
+            "destinatarios": ["admin@festaecia.com.br"],
+            "horario": "18:00"
+          }
+        },
+        "sms_notifications": {
+          "confirmacao_pedido": {
+            "ativo": true,
+            "template": "Seu pedido #{numero_pedido} foi confirmado! Data do evento: {data_evento}. Festa & Cia"
+          },
+          "lembrete_evento": {
+            "ativo": true,
+            "antecedencia_horas": 24,
+            "template": "Lembrete: Seu evento é amanhã ({data_evento})! Pedido #{numero_pedido}. Festa & Cia"
+          }
+        },
+        "updated_at": "2024-07-25T09:45:00Z"
+      }
+    },
+    "backup": {
+      "endpoint": "GET /api/settings/backup",
+      "response": {
+        "configuracao_backup": {
+          "backup_automatico": true,
+          "frequencia": "daily",
+          "horario": "02:00",
+          "retencao_dias": 30,
+          "incluir_imagens": true,
+          "email_notificacao": "admin@festaecia.com.br"
+        },
+        "ultimo_backup": {
+          "data": "2024-08-07T02:00:00Z",
+          "status": "success",
+          "tamanho_mb": 245.8,
+          "arquivo": "backup-2024-08-07.sql.gz"
+        },
+        "historico_backups": [
+          {
+            "data": "2024-08-06T02:00:00Z",
+            "status": "success",
+            "tamanho_mb": 243.2
+          },
+          {
+            "data": "2024-08-05T02:00:00Z",
+            "status": "success",
+            "tamanho_mb": 241.5
+          },
+          {
+            "data": "2024-08-04T02:00:00Z",
+            "status": "failed",
+            "erro": "Espaço insuficiente no disco"
+          }
+        ]
+      }
+    },
+    "create_backup": {
+      "endpoint": "POST /api/settings/backup",
+      "request_body": {
+        "incluir_imagens": true,
+        "observacoes": "Backup manual antes da atualização do sistema"
+      },
+      "response": {
+        "success": true,
+        "message": "Backup iniciado com sucesso",
+        "data": {
+          "backup_id": "BACKUP-001",
+          "status": "in_progress",
+          "iniciado_em": "2024-08-07T16:30:00Z",
+          "estimativa_conclusao": "2024-08-07T16:45:00Z"
+        }
+      }
+    }
+  }
+}
