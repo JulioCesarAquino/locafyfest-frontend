@@ -5,32 +5,42 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { login } from "@/services/authService";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState(''); // Email do admin
+  const [password, setPassword] = useState(''); // Senha do admin
 
-  const handleLogin = async (e: React.FormEvent, userType: 'admin' | 'client') => {
+
+  const handleLogin = async (e: React.FormEvent, userType: "admin" | "client") => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate authentication
-    setTimeout(() => {
+
+    const loginData =
+      userType === "admin"
+        ? { email, password }
+        : { cpf: "000.000.000-00", password };
+
+    try {
+      const { access_token } = await login(userType, loginData);
+      localStorage.setItem("access_token", access_token);
+
+      window.location.href = userType === "admin" ? "/admin/dashboard" : "/catalog";
+    } catch (error) {
+      console.error("Erro ao fazer login:", error);
+      alert("Credenciais inválidas");
+    } finally {
       setIsLoading(false);
-      // Redirect based on user type
-      if (userType === 'admin') {
-        window.location.href = '/admin/dashboard';
-      } else {
-        window.location.href = '/catalog';
-      }
-    }, 1500);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-      
+
       <div className="relative w-full max-w-lg">
         {/* Logo and Title */}
         <div className="text-center mb-8">
@@ -58,14 +68,14 @@ export default function Login() {
           <CardContent>
             <Tabs defaultValue="client" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50">
-                <TabsTrigger 
-                  value="client" 
+                <TabsTrigger
+                  value="client"
                   className="text-sm font-semibold data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
                 >
                   Cliente
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="admin" 
+                <TabsTrigger
+                  value="admin"
                   className="text-sm text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
                 >
                   Administrador
@@ -76,11 +86,13 @@ export default function Login() {
               <TabsContent value="admin">
                 <form onSubmit={(e) => handleLogin(e, 'admin')} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="admin-email">Email ou Usuário</Label>
+                    <Label htmlFor="admin-email">Email</Label>
                     <Input
                       id="admin-email"
                       type="text"
                       placeholder="admin@empresa.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)} // Atualiza o estado com o valor do input
                       required
                       className="h-11"
                     />
@@ -92,6 +104,8 @@ export default function Login() {
                         id="admin-password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Digite sua senha"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)} // Atualiza o estado com o valor do input
                         required
                         className="h-11 pr-10"
                       />
@@ -110,8 +124,8 @@ export default function Login() {
                       </Button>
                     </div>
                   </div>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full h-11 btn-primary"
                     disabled={isLoading}
                   >
@@ -165,8 +179,8 @@ export default function Login() {
                       </Button>
                     </div>
                   </div>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full h-11 btn-primary"
                     disabled={isLoading}
                   >
@@ -185,7 +199,7 @@ export default function Login() {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
-                Novo cliente? 
+                Novo cliente?
                 <Button variant="link" className="p-0 ml-1 h-auto text-primary">
                   Cadastre-se aqui
                 </Button>
