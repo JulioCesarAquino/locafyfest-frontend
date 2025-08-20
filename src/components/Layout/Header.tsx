@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Moon, Sun } from 'lucide-react';
+import { Bell, User, LogOut, Moon, Sun, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -68,12 +68,13 @@ export function Header({
         <DropdownMenuContent align="end" className="w-56 bg-background border-border z-50">
           <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate("/admin/admins", { state: { editAdminId: "1" } })}>
             <User className="mr-2 h-4 w-4" />
             <span>Perfil</span>
           </DropdownMenuItem>
           {userType === 'admin' && (
             <DropdownMenuItem onClick={() => navigate("/admin/settings")}>
+              <Settings className="mr-2 h-4 w-4" />
               <span>Configurações</span>
             </DropdownMenuItem>
           )}

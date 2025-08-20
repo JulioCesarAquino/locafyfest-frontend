@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPlus, Edit, Trash2, Search, Filter, Download, Shield, User, Mail, Calendar, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'react-router-dom';
 
 interface Admin {
   id: string;
@@ -113,6 +114,20 @@ export default function Admins() {
     notes: ''
   });
   const { toast } = useToast();
+  const location = useLocation();
+
+  // Verificar se deve abrir o dialog de edição automaticamente
+  useEffect(() => {
+    const { editAdminId } = location.state || {};
+    if (editAdminId) {
+      const adminToEdit = admins.find(admin => admin.id === editAdminId);
+      if (adminToEdit) {
+        openEditDialog(adminToEdit);
+      }
+      // Limpar o state para evitar reabrir o dialog
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, admins]);
 
   const filteredAdmins = admins.filter(admin => {
     const matchesSearch = admin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
