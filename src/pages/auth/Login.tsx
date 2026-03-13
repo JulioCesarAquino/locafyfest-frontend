@@ -1,36 +1,51 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Package, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Eye, EyeOff, Package, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { login } from "@/services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState(''); // Email do admin
-  const [password, setPassword] = useState(''); // Senha do admin
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { verified?: boolean; email?: string; password?: string } | null;
+  const verified = state?.verified;
+  const [email, setEmail] = useState(state?.email ?? '');
+  const [password, setPassword] = useState(state?.password ?? '');
+  const [error, setError] = useState('');
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const wasDark = root.classList.contains('dark');
+    root.classList.remove('dark');
+    return () => { if (wasDark) root.classList.add('dark'); };
+  }, []);
 
-  const handleLogin = async (e: React.FormEvent, userType: "admin" | "client") => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    const loginData =
-      userType === "admin"
-        ? { email, password }
-        : { cpf: "000.000.000-00", password };
+    setError('');
 
     try {
-      const { access_token } = await login(userType, loginData);
-      localStorage.setItem("access_token", access_token);
+      const { access_token, user_type } = await login({ email, password });
+      signIn(access_token, user_type);
+      navigate(user_type === "admin" ? "/admin/dashboard" : "/catalog", { replace: true });
+    } catch (err: unknown) {
+      type ApiError = { response?: { status?: number; data?: { email_verified?: boolean; email?: string; message?: string } } };
+      const { response } = err as ApiError;
 
-      window.location.href = userType === "admin" ? "/admin/dashboard" : "/catalog";
-    } catch (error) {
-      console.error("Erro ao fazer login:", error);
-      alert("Credenciais inválidas");
+      if (response?.status === 403 && response.data?.email_verified === false) {
+        navigate('/verify-email', { state: { email: response.data.email, password } });
+        return;
+      }
+
+      setError(response?.data?.message ?? "E-mail ou senha inválidos. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -66,141 +81,83 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="client" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50">
-                <TabsTrigger
-                  value="client"
-                  className="text-sm font-semibold data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
-                >
-                  Cliente
-                </TabsTrigger>
-                <TabsTrigger
-                  value="admin"
-                  className="text-sm text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
-                >
-                  Administrador
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Admin Login */}
-              <TabsContent value="admin">
-                <form onSubmit={(e) => handleLogin(e, 'admin')} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-email">Email</Label>
-                    <Input
-                      id="admin-email"
-                      type="text"
-                      placeholder="admin@empresa.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)} // Atualiza o estado com o valor do input
-                      required
-                      className="h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-password">Senha</Label>
-                    <div className="relative">
-                      <Input
-                        id="admin-password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Digite sua senha"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)} // Atualiza o estado com o valor do input
-                        required
-                        className="h-11 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+            {verified && (
+              <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-600 mb-4">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>E-mail verificado com sucesso! Faça login para continuar.</span>
+              </div>
+            )}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Digite sua senha"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11 pr-10"
+                  />
                   <Button
-                    type="submit"
-                    className="w-full h-11 btn-primary"
-                    disabled={isLoading}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
                   >
-                    {isLoading ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Entrando...</span>
-                      </div>
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      'Entrar como Administrador'
+                      <Eye className="h-4 w-4" />
                     )}
                   </Button>
-                </form>
-              </TabsContent>
-
-              {/* Client Login */}
-              <TabsContent value="client">
-                <form onSubmit={(e) => handleLogin(e, 'client')} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="client-cpf">CPF</Label>
-                    <Input
-                      id="client-cpf"
-                      type="text"
-                      placeholder="000.000.000-00"
-                      required
-                      className="h-11"
-                    />
+                </div>
+              </div>
+              <div className="text-right">
+                <Button variant="link" className="p-0 h-auto text-sm text-muted-foreground hover:text-primary" onClick={() => navigate('/forgot-password')}>
+                  Esqueceu a senha?
+                </Button>
+              </div>
+              {error && (
+                <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+              <Button
+                type="submit"
+                className="w-full h-11 btn-primary"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Entrando...</span>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="client-password">Senha</Label>
-                    <div className="relative">
-                      <Input
-                        id="client-password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Digite sua senha"
-                        required
-                        className="h-11 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full h-11 btn-primary"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Entrando...</span>
-                      </div>
-                    ) : (
-                      'Entrar como Cliente'
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                ) : (
+                  'Entrar'
+                )}
+              </Button>
+            </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
                 Novo cliente?
-                <Button variant="link" className="p-0 ml-1 h-auto text-primary">
+                <Button variant="link" className="p-0 ml-1 h-auto text-primary" onClick={() => navigate('/register')}>
                   Cadastre-se aqui
                 </Button>
               </p>
@@ -211,7 +168,7 @@ export default function Login() {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
-            © 2024 Festa System. Todos os direitos reservados.
+            © 2026 Festa System. Todos os direitos reservados.
           </p>
         </div>
       </div>

@@ -73,49 +73,63 @@
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 210 20% 98%;
-    
-    --card: 224 71% 4%;
-    --card-foreground: 210 20% 98%;
-    --surface: 220 13% 8%;
-    --surface-foreground: 210 20% 98%;
-    
-    --primary: 45 96% 50%;
-    --primary-foreground: 224 71% 4%;
-    --primary-hover: 45 96% 55%;
-    --primary-light: 45 96% 15%;
-    --primary-glow: 45 96% 60%;
-    
-    --secondary: 215 28% 17%;
-    --secondary-foreground: 210 20% 98%;
-    --secondary-hover: 215 28% 20%;
-    
-    --success: 142 76% 40%;
-    --warning: 38 92% 55%;
-    --danger: 0 84% 65%;
-    --info: 221 83% 58%;
-    
-    --muted: 215 28% 17%;
-    --muted-foreground: 217 11% 65%;
-    --accent: 215 28% 17%;
-    --accent-foreground: 210 20% 98%;
-    
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 45 96% 50%;
-    
-    --popover: 224 71% 4%;
-    --popover-foreground: 210 20% 98%;
-    
-    --gradient-primary: linear-gradient(135deg, hsl(45 96% 50%), hsl(45 96% 60%));
-    --gradient-surface: linear-gradient(180deg, hsl(224 71% 4%), hsl(220 13% 6%));
-    --gradient-card: linear-gradient(145deg, hsl(224 71% 4%), hsl(220 13% 8%));
-    
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.5);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.5), 0 2px 4px -1px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -2px hsl(0 0% 0% / 0.3);
-    --shadow-primary: 0 10px 25px -5px hsl(45 96% 50% / 0.4);
+    /* Base — cinza escuro suave, não preto puro */
+    --background: 222 14% 11%;
+    --foreground: 210 17% 95%;
+
+    /* Cards e superfícies com elevação visível */
+    --card: 222 14% 15%;
+    --card-foreground: 210 17% 95%;
+    --surface: 222 14% 13%;
+    --surface-foreground: 210 17% 95%;
+
+    /* Amarelo dourado levemente mais brilhante no escuro */
+    --primary: 45 90% 52%;
+    --primary-foreground: 222 14% 9%;
+    --primary-hover: 45 90% 47%;
+    --primary-light: 45 90% 18%;
+    --primary-glow: 45 90% 60%;
+
+    /* Secundário — cinza elevado */
+    --secondary: 222 14% 20%;
+    --secondary-foreground: 210 17% 95%;
+    --secondary-hover: 222 14% 24%;
+
+    /* Semânticas levemente mais saturadas para visibilidade */
+    --success: 142 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 88% 52%;
+    --warning-foreground: 222 14% 9%;
+    --danger: 0 72% 60%;
+    --danger-foreground: 0 0% 100%;
+    --info: 221 76% 58%;
+    --info-foreground: 0 0% 100%;
+
+    /* Neutros */
+    --muted: 222 14% 19%;
+    --muted-foreground: 215 12% 56%;
+    --accent: 222 14% 20%;
+    --accent-foreground: 210 17% 95%;
+
+    /* Bordas e inputs visíveis mas sutis */
+    --border: 222 14% 24%;
+    --input: 222 14% 19%;
+    --ring: 45 90% 52%;
+
+    /* Popover */
+    --popover: 222 14% 15%;
+    --popover-foreground: 210 17% 95%;
+
+    /* Gradientes coerentes com o fundo escuro */
+    --gradient-primary: linear-gradient(135deg, hsl(45 90% 52%), hsl(45 90% 62%));
+    --gradient-surface: linear-gradient(180deg, hsl(222 14% 11%), hsl(222 14% 13%));
+    --gradient-card: linear-gradient(145deg, hsl(222 14% 15%), hsl(222 14% 18%));
+
+    /* Sombras com preto puro para profundidade */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -1px hsl(0 0% 0% / 0.25);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.45), 0 4px 6px -2px hsl(0 0% 0% / 0.3);
+    --shadow-primary: 0 10px 25px -5px hsl(45 90% 52% / 0.35);
   }
 }
 
