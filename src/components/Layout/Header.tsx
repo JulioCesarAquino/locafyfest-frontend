@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import { logout } from "@/services/authService";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/contexts/ThemeContext";
 interface HeaderProps {
   userName: string;
   userType: 'admin' | 'client';
@@ -16,13 +17,10 @@ export function Header({
   userType,
   companyName
 }: HeaderProps) {
-  const [darkMode, setDarkMode] = useState(false);
   const [notifications] = useState(3);
   const navigate = useNavigate();
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle('dark');
-  };
+  const { resolvedTheme, setTheme } = useTheme();
+  const toggleDarkMode = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   return <header className="h-16 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 bg-background/80">
     {/* Left Section */}
     <div className="flex items-center space-x-4">
@@ -38,7 +36,7 @@ export function Header({
     <div className="flex items-center space-x-2 sm:space-x-4">
       {/* Theme Toggle */}
       <Button variant="outline" size="icon" onClick={toggleDarkMode} className="w-8 h-8 sm:w-9 sm:h-9 hidden sm:flex">
-        {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+        {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
       </Button>
 
       {/* Notifications */}
