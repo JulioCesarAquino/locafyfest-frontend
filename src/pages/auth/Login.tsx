@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Eye, EyeOff, Package, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { login } from "@/services/authService";
 import { useAuth } from "@/contexts/AuthContext";
+import { APP_NAME, APP_SUBTITLE } from "@/config/app";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -20,22 +21,15 @@ export default function Login() {
   const [password, setPassword] = useState(state?.password ?? '');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const root = document.documentElement;
-    const wasDark = root.classList.contains('dark');
-    root.classList.remove('dark');
-    return () => { if (wasDark) root.classList.add('dark'); };
-  }, []);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      const { access_token, user_type } = await login({ email, password });
-      signIn(access_token, user_type);
-      navigate(user_type === "admin" ? "/admin/dashboard" : "/catalog", { replace: true });
+      const payload = await login({ email, password });
+      signIn(payload);
+      navigate(payload.type === "admin" ? "/admin/dashboard" : "/catalog", { replace: true });
     } catch (err: unknown) {
       type ApiError = { response?: { status?: number; data?: { email_verified?: boolean; email?: string; message?: string } } };
       const { response } = err as ApiError;
@@ -66,14 +60,14 @@ export default function Login() {
             <Sparkles className="w-6 h-6 text-primary animate-pulse" />
           </div>
           <h1 className="text-3xl font-bold text-gradient-primary mb-2">
-            Festa System
+            {APP_NAME}
           </h1>
           <p className="text-muted-foreground">
-            Sistema de Locação para Eventos e Festas
+            {APP_SUBTITLE}
           </p>
         </div>
 
-        <Card className="bg-white/90 backdrop-blur-xl border-border/50 shadow-lg">
+        <Card className="backdrop-blur-xl border-border/50 shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Bem-vindo</CardTitle>
             <CardDescription className="text-center">
@@ -128,7 +122,7 @@ export default function Login() {
                 </div>
               </div>
               <div className="text-right">
-                <Button variant="link" className="p-0 h-auto text-sm text-muted-foreground hover:text-primary" onClick={() => navigate('/forgot-password')}>
+                <Button type="button" variant="link" className="p-0 h-auto text-sm text-muted-foreground hover:text-primary" onClick={() => navigate('/forgot-password')}>
                   Esqueceu a senha?
                 </Button>
               </div>
@@ -168,7 +162,7 @@ export default function Login() {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
-            © 2026 Festa System. Todos os direitos reservados.
+            © 2026 {APP_NAME}. Todos os direitos reservados.
           </p>
         </div>
       </div>

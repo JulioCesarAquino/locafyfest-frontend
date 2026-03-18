@@ -1,15 +1,16 @@
 import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppLayoutProps {
   children: ReactNode;
   userType: 'admin' | 'client';
-  userName: string;
   companyName?: string;
 }
 
-export function AppLayout({ children, userType, userName, companyName }: AppLayoutProps) {
+export function AppLayout({ children, userType, companyName }: AppLayoutProps) {
+  const { userName } = useAuth();
   return (
     <div className="min-h-screen bg-gradient-surface">
       <Sidebar userType={userType} />

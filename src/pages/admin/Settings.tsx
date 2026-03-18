@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/Layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,223 +8,264 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Clock, FileText, Calculator, Palette, CreditCard, Plus, X, Upload } from 'lucide-react';
+import { Building2, Clock, FileText, Calculator, Upload, Navigation, Loader2, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import {
+  getFeeSettings, saveFeeSettings,
+  getCompanyInfo, saveCompanyInfo,
+  getWorkingHours, saveWorkingHours,
+  getBusinessRules, saveBusinessRules,
+  DEFAULT_COMPANY, DEFAULT_WORKING_HOURS, DEFAULT_BUSINESS_RULES, DEFAULT_FEES,
+  type CompanyInfo, type WorkingHoursSettings, type BusinessRulesSettings, type FeeSettings,
+} from '@/services/settings';
 
-interface CompanySettings {
-  name: string;
-  logo: string;
-  email: string;
-  phone: string;
-  address: string;
-  cnpj: string;
-  website: string;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const BR_STATE_CODES: Record<string, string> = {
+  'Acre': 'AC', 'Alagoas': 'AL', 'Amapá': 'AP', 'Amazonas': 'AM',
+  'Bahia': 'BA', 'Ceará': 'CE', 'Distrito Federal': 'DF',
+  'Espírito Santo': 'ES', 'Goiás': 'GO', 'Maranhão': 'MA',
+  'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS', 'Minas Gerais': 'MG',
+  'Pará': 'PA', 'Paraíba': 'PB', 'Paraná': 'PR', 'Pernambuco': 'PE',
+  'Piauí': 'PI', 'Rio de Janeiro': 'RJ', 'Rio Grande do Norte': 'RN',
+  'Rio Grande do Sul': 'RS', 'Rondônia': 'RO', 'Roraima': 'RR',
+  'Santa Catarina': 'SC', 'São Paulo': 'SP', 'Sergipe': 'SE', 'Tocantins': 'TO',
+};
+
+function normalizeState(value: string): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+  if (trimmed.length === 2) return trimmed.toUpperCase();
+  return BR_STATE_CODES[trimmed] ?? trimmed.slice(0, 2).toUpperCase();
 }
 
-interface WorkingHours {
-  monday: { start: string; end: string; active: boolean };
-  tuesday: { start: string; end: string; active: boolean };
-  wednesday: { start: string; end: string; active: boolean };
-  thursday: { start: string; end: string; active: boolean };
-  friday: { start: string; end: string; active: boolean };
-  saturday: { start: string; end: string; active: boolean };
-  sunday: { start: string; end: string; active: boolean };
+function formatCep(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
-interface BusinessRules {
-  cancellationPolicy: string;
-  minimumRentalDays: number;
-  maximumRentalDays: number;
-  advanceBookingDays: number;
-  securityDeposit: number;
-  termsAndConditions: string;
-}
+const DAY_NAMES: Record<keyof WorkingHoursSettings, string> = {
+  monday:    'Segunda-feira',
+  tuesday:   'Terça-feira',
+  wednesday: 'Quarta-feira',
+  thursday:  'Quinta-feira',
+  friday:    'Sexta-feira',
+  saturday:  'Sábado',
+  sunday:    'Domingo',
+};
 
-interface Fees {
-  deliveryFee: number;
-  assemblyFee: number;
-  lateFeePerDay: number;
-  lateFeePercentage: number;
-  minimumLateFee: number;
-}
-
-interface Variation {
-  id: string;
-  name: string;
-  type: 'color' | 'size' | 'material';
-  values: string[];
-}
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const [companySettings, setCompanySettings] = useState<CompanySettings>({
-    name: 'Aluguel de Festas Premium',
-    logo: '',
-    email: 'contato@alugueldefestas.com',
-    phone: '(11) 99999-9999',
-    address: 'Rua das Festas, 123 - São Paulo, SP',
-    cnpj: '12.345.678/0001-90',
-    website: 'www.alugueldefestas.com'
-  });
+  const [company, setCompany] = useState<CompanyInfo>({ ...DEFAULT_COMPANY, address: { ...DEFAULT_COMPANY.address } });
+  const [workingHours, setWorkingHours] = useState<WorkingHoursSettings>(structuredClone(DEFAULT_WORKING_HOURS));
+  const [businessRules, setBusinessRules] = useState<BusinessRulesSettings>({ ...DEFAULT_BUSINESS_RULES });
+  const [fees, setFees] = useState<FeeSettings>({ ...DEFAULT_FEES });
 
-  const [workingHours, setWorkingHours] = useState<WorkingHours>({
-    monday: { start: '08:00', end: '18:00', active: true },
-    tuesday: { start: '08:00', end: '18:00', active: true },
-    wednesday: { start: '08:00', end: '18:00', active: true },
-    thursday: { start: '08:00', end: '18:00', active: true },
-    friday: { start: '08:00', end: '18:00', active: true },
-    saturday: { start: '08:00', end: '16:00', active: true },
-    sunday: { start: '10:00', end: '14:00', active: false }
-  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fetchingCep, setFetchingCep] = useState(false);
+  const [fetchingLocation, setFetchingLocation] = useState(false);
 
-  const [businessRules, setBusinessRules] = useState<BusinessRules>({
-    cancellationPolicy: 'Cancelamentos até 48h antes do evento têm reembolso total. Entre 24h-48h: 50% de reembolso. Menos de 24h: sem reembolso.',
-    minimumRentalDays: 1,
-    maximumRentalDays: 30,
-    advanceBookingDays: 60,
-    securityDeposit: 20,
-    termsAndConditions: 'Termos e condições gerais do aluguel de produtos para festas e eventos.'
-  });
-
-  const [fees, setFees] = useState<Fees>({
-    deliveryFee: 50,
-    assemblyFee: 100,
-    lateFeePerDay: 15,
-    lateFeePercentage: 2,
-    minimumLateFee: 25
-  });
-
-  const [variations, setVariations] = useState<Variation[]>([
-    {
-      id: '1',
-      name: 'Cores',
-      type: 'color',
-      values: ['Branco', 'Azul', 'Rosa', 'Dourado', 'Prata']
-    },
-    {
-      id: '2',
-      name: 'Tamanhos',
-      type: 'size',
-      values: ['P', 'M', 'G', 'GG']
-    }
-  ]);
-
-  const [pixKey, setPixKey] = useState('12345678901');
-  const [newVariation, setNewVariation] = useState<{name: string; type: 'color' | 'size' | 'material'; values: string[]}>({ name: '', type: 'color', values: [''] });
-
-  const handleSaveCompany = () => {
-    toast({
-      title: "Configurações da empresa salvas",
-      description: "As informações da empresa foram atualizadas com sucesso."
-    });
-  };
-
-  const handleSaveWorkingHours = () => {
-    toast({
-      title: "Horários salvos",
-      description: "Os horários de funcionamento foram atualizados."
-    });
-  };
-
-  const handleSaveBusinessRules = () => {
-    toast({
-      title: "Regras de negócio salvas",
-      description: "As políticas e regras foram atualizadas."
-    });
-  };
-
-  const handleSaveFees = () => {
-    toast({
-      title: "Taxas atualizadas",
-      description: "As configurações de taxas foram salvas."
-    });
-  };
-
-  const handleSaveVariations = () => {
-    toast({
-      title: "Variações salvas",
-      description: "As configurações de variações foram atualizadas."
-    });
-  };
-
-  const handleSavePixKey = () => {
-    toast({
-      title: "Chave PIX salva",
-      description: "A chave PIX foi atualizada com sucesso."
-    });
-  };
-
-  const addVariation = () => {
-    if (newVariation.name && newVariation.values[0]) {
-      const variation: Variation = {
-        id: Date.now().toString(),
-        name: newVariation.name,
-        type: newVariation.type,
-        values: newVariation.values.filter(v => v.trim() !== '')
-      };
-      setVariations([...variations, variation]);
-      setNewVariation({ name: '', type: 'color', values: [''] });
-    }
-  };
-
-  const removeVariation = (id: string) => {
-    setVariations(variations.filter(v => v.id !== id));
-  };
-
-  const updateWorkingHour = (day: keyof WorkingHours, field: 'start' | 'end' | 'active', value: string | boolean) => {
-    setWorkingHours(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [field]: value
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const [c, wh, br, f] = await Promise.all([
+          getCompanyInfo(),
+          getWorkingHours(),
+          getBusinessRules(),
+          getFeeSettings(),
+        ]);
+        setCompany(c);
+        setWorkingHours(wh);
+        setBusinessRules(br);
+        setFees(f);
+      } catch {
+        toast({ title: 'Erro ao carregar configurações', variant: 'destructive' });
+      } finally {
+        setLoading(false);
       }
-    }));
+    }
+    load();
+  }, []);
+
+  // ─── Company ──────────────────────────────────────────────────────────────
+
+  const setAddr = (field: keyof CompanyInfo['address'], value: string | number | null) =>
+    setCompany(prev => ({ ...prev, address: { ...prev.address, [field]: value } }));
+
+  const fetchCepData = async (rawCep: string) => {
+    const digits = rawCep.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setFetchingCep(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (data.erro) {
+        toast({ title: 'CEP não encontrado.', variant: 'destructive' });
+        return;
+      }
+      setCompany(prev => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          zip_code: formatCep(digits),
+          street: data.logradouro ?? prev.address.street,
+          neighborhood: data.bairro ?? prev.address.neighborhood,
+          city: data.localidade ?? prev.address.city,
+          state: data.uf ?? prev.address.state,
+        },
+      }));
+    } catch {
+      toast({ title: 'Erro ao buscar CEP.', variant: 'destructive' });
+    } finally {
+      setFetchingCep(false);
+    }
   };
 
-  const addVariationValue = () => {
-    setNewVariation(prev => ({
-      ...prev,
-      values: [...prev.values, '']
-    }));
+  const handleCepChange = (value: string) => {
+    const formatted = formatCep(value);
+    setAddr('zip_code', formatted);
+    const digits = formatted.replace(/\D/g, '');
+    if (digits.length === 8) fetchCepData(digits);
   };
 
-  const updateVariationValue = (index: number, value: string) => {
-    setNewVariation(prev => ({
-      ...prev,
-      values: prev.values.map((v, i) => i === index ? value : v)
-    }));
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Geolocalização não suportada pelo navegador.', variant: 'destructive' });
+      return;
+    }
+    setFetchingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const { latitude, longitude } = coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            { headers: { 'Accept-Language': 'pt-BR' } },
+          );
+          const data = await res.json();
+          const addr = data.address ?? {};
+          setCompany(prev => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              street: addr.road ?? addr.street ?? prev.address.street,
+              number: addr.house_number ?? prev.address.number,
+              neighborhood: addr.suburb ?? addr.neighbourhood ?? addr.quarter ?? prev.address.neighborhood,
+              city: addr.city ?? addr.town ?? addr.village ?? addr.municipality ?? prev.address.city,
+              state: normalizeState(addr.state_code ?? addr.state ?? prev.address.state),
+              zip_code: formatCep((addr.postcode ?? '').replace('-', '')) || prev.address.zip_code,
+              latitude,
+              longitude,
+            },
+          }));
+          toast({ title: 'Localização obtida', description: 'Endereço e coordenadas atualizados.' });
+        } catch {
+          // Still save coordinates even if reverse geocoding fails
+          setAddr('latitude', latitude);
+          setAddr('longitude', longitude);
+          toast({ title: 'Coordenadas obtidas', description: 'Não foi possível converter em endereço.' });
+        } finally {
+          setFetchingLocation(false);
+        }
+      },
+      () => {
+        toast({ title: 'Permissão negada ou localização indisponível.', variant: 'destructive' });
+        setFetchingLocation(false);
+      },
+      { timeout: 10000 },
+    );
   };
 
-  const removeVariationValue = (index: number) => {
-    setNewVariation(prev => ({
-      ...prev,
-      values: prev.values.filter((_, i) => i !== index)
-    }));
+  const handleSaveCompany = async () => {
+    const saved = { ...company, address: { ...company.address, state: normalizeState(company.address.state) } };
+    setSaving(true);
+    try {
+      await saveCompanyInfo(saved);
+      setCompany(saved);
+      toast({ title: 'Empresa salva', description: 'Dados da empresa atualizados com sucesso.' });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: 'Erro ao salvar', description: msg ?? 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const dayNames = {
-    monday: 'Segunda-feira',
-    tuesday: 'Terça-feira',
-    wednesday: 'Quarta-feira',
-    thursday: 'Quinta-feira',
-    friday: 'Sexta-feira',
-    saturday: 'Sábado',
-    sunday: 'Domingo'
+  // ─── Working hours ────────────────────────────────────────────────────────
+
+  const updateDay = (day: keyof WorkingHoursSettings, field: 'start' | 'end' | 'active', value: string | boolean) =>
+    setWorkingHours(prev => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
+
+  const handleSaveWorkingHours = async () => {
+    setSaving(true);
+    try {
+      await saveWorkingHours(workingHours);
+      toast({ title: 'Horários salvos', description: 'Horários de funcionamento atualizados.' });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: 'Erro ao salvar', description: msg ?? 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // ─── Business rules ───────────────────────────────────────────────────────
+
+  const handleSaveBusinessRules = async () => {
+    setSaving(true);
+    try {
+      await saveBusinessRules(businessRules);
+      toast({ title: 'Políticas salvas', description: 'Regras de negócio atualizadas.' });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: 'Erro ao salvar', description: msg ?? 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Fees ─────────────────────────────────────────────────────────────────
+
+  const handleSaveFees = async () => {
+    setSaving(true);
+    try {
+      await saveFeeSettings(fees);
+      toast({ title: 'Taxas salvas', description: 'Configurações de taxas atualizadas.' });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: 'Erro ao salvar', description: msg ?? 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <AppLayout userType="admin">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
-    <AppLayout userType="admin" userName="Administrador">
+    <AppLayout userType="admin">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-muted-foreground">
-            Gerencie as configurações do sistema e da empresa
-          </p>
+          <p className="text-muted-foreground">Gerencie as configurações do sistema e da empresa</p>
         </div>
 
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="company" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Empresa
@@ -241,148 +282,274 @@ export default function Settings() {
               <Calculator className="h-4 w-4" />
               Taxas
             </TabsTrigger>
-            <TabsTrigger value="variations" className="flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              Variações
-            </TabsTrigger>
-            <TabsTrigger value="payment" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Pagamento
-            </TabsTrigger>
           </TabsList>
 
+          {/* ── Empresa ── */}
           <TabsContent value="company">
             <Card>
               <CardHeader>
                 <CardTitle>Informações da Empresa</CardTitle>
-                <CardDescription>
-                  Configure os dados básicos da sua empresa
-                </CardDescription>
+                <CardDescription>Configure os dados cadastrais e o endereço da loja</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+
+                {/* Dados cadastrais */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="companyName">Nome da Empresa</Label>
                     <Input
                       id="companyName"
-                      value={companySettings.name}
-                      onChange={(e) => setCompanySettings(prev => ({ ...prev, name: e.target.value }))}
+                      value={company.name}
+                      onChange={(e) => setCompany(prev => ({ ...prev, name: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cnpj">CNPJ</Label>
                     <Input
                       id="cnpj"
-                      value={companySettings.cnpj}
-                      onChange={(e) => setCompanySettings(prev => ({ ...prev, cnpj: e.target.value }))}
+                      placeholder="00.000.000/0001-00"
+                      value={company.cnpj}
+                      onChange={(e) => setCompany(prev => ({ ...prev, cnpj: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">E-mail</Label>
+                    <Label htmlFor="companyEmail">E-mail</Label>
                     <Input
-                      id="email"
+                      id="companyEmail"
                       type="email"
-                      value={companySettings.email}
-                      onChange={(e) => setCompanySettings(prev => ({ ...prev, email: e.target.value }))}
+                      value={company.email}
+                      onChange={(e) => setCompany(prev => ({ ...prev, email: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
+                    <Label htmlFor="companyPhone">Telefone</Label>
                     <Input
-                      id="phone"
-                      value={companySettings.phone}
-                      onChange={(e) => setCompanySettings(prev => ({ ...prev, phone: e.target.value }))}
+                      id="companyPhone"
+                      value={company.phone}
+                      onChange={(e) => setCompany(prev => ({ ...prev, phone: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="website">Website</Label>
                     <Input
                       id="website"
-                      value={companySettings.website}
-                      onChange={(e) => setCompanySettings(prev => ({ ...prev, website: e.target.value }))}
+                      value={company.website}
+                      onChange={(e) => setCompany(prev => ({ ...prev, website: e.target.value }))}
                     />
                   </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="address">Endereço</Label>
-                  <Textarea
-                    id="address"
-                    value={companySettings.address}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, address: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="logo">Logo da Empresa</Label>
+                  <Label>Logo da Empresa</Label>
                   <div className="flex items-center gap-4">
-                    <Button variant="outline" className="flex items-center gap-2">
+                    <Button variant="outline" className="flex items-center gap-2" type="button">
                       <Upload className="h-4 w-4" />
                       Selecionar Logo
                     </Button>
-                    <span className="text-sm text-muted-foreground">
-                      Formatos aceitos: PNG, JPG (máx. 2MB)
-                    </span>
+                    <span className="text-sm text-muted-foreground">Formatos aceitos: PNG, JPG (máx. 2MB)</span>
                   </div>
                 </div>
-                <Button onClick={handleSaveCompany}>Salvar Configurações da Empresa</Button>
+
+                <Separator />
+
+                {/* Endereço */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <h4 className="font-medium">Endereço da Loja</h4>
+                  </div>
+
+                  {/* CEP + botão de localização */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="zip_code">CEP</Label>
+                      <div className="relative">
+                        <Input
+                          id="zip_code"
+                          placeholder="00000-000"
+                          value={company.address.zip_code}
+                          onChange={(e) => handleCepChange(e.target.value)}
+                          maxLength={9}
+                        />
+                        {fetchingCep && (
+                          <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="md:col-span-2 flex items-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="flex items-center gap-2"
+                        onClick={getCurrentLocation}
+                        disabled={fetchingLocation}
+                      >
+                        {fetchingLocation
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Navigation className="h-4 w-4" />}
+                        {fetchingLocation ? 'Obtendo...' : 'Usar localização atual'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Rua + Número */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="street">Rua / Avenida</Label>
+                      <Input
+                        id="street"
+                        value={company.address.street}
+                        onChange={(e) => setAddr('street', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="number">Número</Label>
+                      <Input
+                        id="number"
+                        value={company.address.number}
+                        onChange={(e) => setAddr('number', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Complemento + Bairro */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="complement">Complemento</Label>
+                      <Input
+                        id="complement"
+                        placeholder="Sala, Galpão, Bloco..."
+                        value={company.address.complement}
+                        onChange={(e) => setAddr('complement', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="neighborhood">Bairro</Label>
+                      <Input
+                        id="neighborhood"
+                        value={company.address.neighborhood}
+                        onChange={(e) => setAddr('neighborhood', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cidade + Estado */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="city">Cidade</Label>
+                      <Input
+                        id="city"
+                        value={company.address.city}
+                        onChange={(e) => setAddr('city', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">Estado (UF)</Label>
+                      <Input
+                        id="state"
+                        placeholder="SP"
+                        maxLength={2}
+                        value={company.address.state}
+                        onChange={(e) => setAddr('state', e.target.value.toUpperCase())}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Coordenadas */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude">Latitude</Label>
+                      <Input
+                        id="latitude"
+                        type="number"
+                        step="any"
+                        placeholder="Ex: -23.5505"
+                        value={company.address.latitude ?? ''}
+                        onChange={(e) => setAddr('latitude', e.target.value ? parseFloat(e.target.value) : null)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude">Longitude</Label>
+                      <Input
+                        id="longitude"
+                        type="number"
+                        step="any"
+                        placeholder="Ex: -46.6333"
+                        value={company.address.longitude ?? ''}
+                        onChange={(e) => setAddr('longitude', e.target.value ? parseFloat(e.target.value) : null)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    As coordenadas são usadas para calcular a distância de entrega até o cliente.
+                  </p>
+                </div>
+
+                <Button onClick={handleSaveCompany} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Salvar Informações da Empresa
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* ── Horários ── */}
           <TabsContent value="hours">
             <Card>
               <CardHeader>
                 <CardTitle>Horários de Funcionamento</CardTitle>
-                <CardDescription>
-                  Configure os horários de atendimento e disponibilidade para agendamentos
-                </CardDescription>
+                <CardDescription>Configure os horários de atendimento e disponibilidade</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {Object.entries(workingHours).map(([day, hours]) => (
-                  <div key={day} className="flex items-center gap-4 p-4 border rounded-lg">
-                    <div className="w-32">
-                      <Label className="font-medium">{dayNames[day as keyof typeof dayNames]}</Label>
-                    </div>
-                    <Switch
-                      checked={hours.active}
-                      onCheckedChange={(checked) => updateWorkingHour(day as keyof WorkingHours, 'active', checked)}
-                    />
-                    {hours.active && (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <Label className="text-sm">Das</Label>
+                {(Object.keys(DAY_NAMES) as (keyof WorkingHoursSettings)[]).map((day) => {
+                  const hours = workingHours[day];
+                  return (
+                    <div key={day} className="flex items-center gap-4 p-4 border rounded-lg">
+                      <div className="w-36 shrink-0">
+                        <Label className="font-medium">{DAY_NAMES[day]}</Label>
+                      </div>
+                      <Switch
+                        checked={hours.active}
+                        onCheckedChange={(checked) => updateDay(day, 'active', checked)}
+                      />
+                      {hours.active ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Label className="text-sm text-muted-foreground">Das</Label>
                           <Input
                             type="time"
                             value={hours.start}
-                            onChange={(e) => updateWorkingHour(day as keyof WorkingHours, 'start', e.target.value)}
+                            onChange={(e) => updateDay(day, 'start', e.target.value)}
                             className="w-32"
                           />
-                          <Label className="text-sm">às</Label>
+                          <Label className="text-sm text-muted-foreground">às</Label>
                           <Input
                             type="time"
                             value={hours.end}
-                            onChange={(e) => updateWorkingHour(day as keyof WorkingHours, 'end', e.target.value)}
+                            onChange={(e) => updateDay(day, 'end', e.target.value)}
                             className="w-32"
                           />
                         </div>
-                      </>
-                    )}
-                    {!hours.active && (
-                      <Badge variant="secondary">Fechado</Badge>
-                    )}
-                  </div>
-                ))}
-                <Button onClick={handleSaveWorkingHours}>Salvar Horários</Button>
+                      ) : (
+                        <Badge variant="secondary">Fechado</Badge>
+                      )}
+                    </div>
+                  );
+                })}
+                <Button onClick={handleSaveWorkingHours} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Salvar Horários
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* ── Políticas ── */}
           <TabsContent value="rules">
             <Card>
               <CardHeader>
                 <CardTitle>Políticas e Regras de Negócio</CardTitle>
-                <CardDescription>
-                  Configure as regras de cancelamento e políticas da empresa
-                </CardDescription>
+                <CardDescription>Configure as regras de cancelamento e políticas da empresa</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -391,8 +558,9 @@ export default function Settings() {
                     <Input
                       id="minDays"
                       type="number"
+                      min={1}
                       value={businessRules.minimumRentalDays}
-                      onChange={(e) => setBusinessRules(prev => ({ ...prev, minimumRentalDays: parseInt(e.target.value) }))}
+                      onChange={(e) => setBusinessRules(prev => ({ ...prev, minimumRentalDays: parseInt(e.target.value) || 1 }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -400,8 +568,9 @@ export default function Settings() {
                     <Input
                       id="maxDays"
                       type="number"
+                      min={1}
                       value={businessRules.maximumRentalDays}
-                      onChange={(e) => setBusinessRules(prev => ({ ...prev, maximumRentalDays: parseInt(e.target.value) }))}
+                      onChange={(e) => setBusinessRules(prev => ({ ...prev, maximumRentalDays: parseInt(e.target.value) || 1 }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -409,17 +578,20 @@ export default function Settings() {
                     <Input
                       id="advanceDays"
                       type="number"
+                      min={0}
                       value={businessRules.advanceBookingDays}
-                      onChange={(e) => setBusinessRules(prev => ({ ...prev, advanceBookingDays: parseInt(e.target.value) }))}
+                      onChange={(e) => setBusinessRules(prev => ({ ...prev, advanceBookingDays: parseInt(e.target.value) || 0 }))}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="deposit">Caução/Sinal (%)</Label>
+                    <Label htmlFor="deposit">Caução / Sinal (%)</Label>
                     <Input
                       id="deposit"
                       type="number"
+                      min={0}
+                      max={100}
                       value={businessRules.securityDeposit}
-                      onChange={(e) => setBusinessRules(prev => ({ ...prev, securityDeposit: parseInt(e.target.value) }))}
+                      onChange={(e) => setBusinessRules(prev => ({ ...prev, securityDeposit: parseInt(e.target.value) || 0 }))}
                     />
                   </div>
                 </div>
@@ -438,21 +610,23 @@ export default function Settings() {
                     id="terms"
                     value={businessRules.termsAndConditions}
                     onChange={(e) => setBusinessRules(prev => ({ ...prev, termsAndConditions: e.target.value }))}
-                    rows={4}
+                    rows={5}
                   />
                 </div>
-                <Button onClick={handleSaveBusinessRules}>Salvar Políticas</Button>
+                <Button onClick={handleSaveBusinessRules} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Salvar Políticas
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* ── Taxas ── */}
           <TabsContent value="fees">
             <Card>
               <CardHeader>
                 <CardTitle>Configuração de Taxas</CardTitle>
-                <CardDescription>
-                  Configure as taxas de entrega, montagem e multas
-                </CardDescription>
+                <CardDescription>Configure as taxas de entrega, montagem e multas por atraso</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -462,8 +636,9 @@ export default function Settings() {
                       id="deliveryFee"
                       type="number"
                       step="0.01"
+                      min={0}
                       value={fees.deliveryFee}
-                      onChange={(e) => setFees(prev => ({ ...prev, deliveryFee: parseFloat(e.target.value) }))}
+                      onChange={(e) => setFees(prev => ({ ...prev, deliveryFee: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -472,8 +647,9 @@ export default function Settings() {
                       id="assemblyFee"
                       type="number"
                       step="0.01"
+                      min={0}
                       value={fees.assemblyFee}
-                      onChange={(e) => setFees(prev => ({ ...prev, assemblyFee: parseFloat(e.target.value) }))}
+                      onChange={(e) => setFees(prev => ({ ...prev, assemblyFee: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -482,8 +658,9 @@ export default function Settings() {
                       id="lateFeeDay"
                       type="number"
                       step="0.01"
+                      min={0}
                       value={fees.lateFeePerDay}
-                      onChange={(e) => setFees(prev => ({ ...prev, lateFeePerDay: parseFloat(e.target.value) }))}
+                      onChange={(e) => setFees(prev => ({ ...prev, lateFeePerDay: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -492,8 +669,9 @@ export default function Settings() {
                       id="lateFeePercent"
                       type="number"
                       step="0.01"
+                      min={0}
                       value={fees.lateFeePercentage}
-                      onChange={(e) => setFees(prev => ({ ...prev, lateFeePercentage: parseFloat(e.target.value) }))}
+                      onChange={(e) => setFees(prev => ({ ...prev, lateFeePercentage: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -502,146 +680,51 @@ export default function Settings() {
                       id="minLateFee"
                       type="number"
                       step="0.01"
+                      min={0}
                       value={fees.minimumLateFee}
-                      onChange={(e) => setFees(prev => ({ ...prev, minimumLateFee: parseFloat(e.target.value) }))}
+                      onChange={(e) => setFees(prev => ({ ...prev, minimumLateFee: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
-                </div>
-                <Button onClick={handleSaveFees}>Salvar Taxas</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="variations">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuração de Variações</CardTitle>
-                <CardDescription>
-                  Configure as variações disponíveis para os produtos (cores, tamanhos, materiais)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  {variations.map((variation) => (
-                    <div key={variation.id} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <h4 className="font-medium">{variation.name}</h4>
-                          <Badge variant="outline" className="capitalize">{variation.type}</Badge>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeVariation(variation.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {variation.values.map((value, index) => (
-                          <Badge key={index} variant="secondary">{value}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
                 </div>
 
                 <Separator />
 
-                <div className="space-y-4">
-                  <h4 className="font-medium">Adicionar Nova Variação</h4>
+                <div>
+                  <h4 className="font-medium mb-1">Raio de Entrega</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Entregas dentro do raio gratuito não cobram frete. Acima do raio máximo, entrega não disponível.
+                    A localização de origem é definida na aba <strong>Empresa</strong>.
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="varName">Nome da Variação</Label>
+                      <Label htmlFor="freeRadius">Raio gratuito (km)</Label>
                       <Input
-                        id="varName"
-                        value={newVariation.name}
-                        onChange={(e) => setNewVariation(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Ex: Cores, Tamanhos"
+                        id="freeRadius"
+                        type="number"
+                        step="0.5"
+                        min={0}
+                        value={fees.deliveryFreeRadiusKm}
+                        onChange={(e) => setFees(prev => ({ ...prev, deliveryFreeRadiusKm: parseFloat(e.target.value) || 0 }))}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="varType">Tipo</Label>
-                      <Select
-                        value={newVariation.type}
-                        onValueChange={(value: 'color' | 'size' | 'material') => 
-                          setNewVariation(prev => ({ ...prev, type: value }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="color">Cor</SelectItem>
-                          <SelectItem value="size">Tamanho</SelectItem>
-                          <SelectItem value="material">Material</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="maxRadius">Raio máximo de entrega (km)</Label>
+                      <Input
+                        id="maxRadius"
+                        type="number"
+                        step="0.5"
+                        min={0}
+                        value={fees.deliveryMaxRadiusKm}
+                        onChange={(e) => setFees(prev => ({ ...prev, deliveryMaxRadiusKm: parseFloat(e.target.value) || 0 }))}
+                      />
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Valores</Label>
-                    {newVariation.values.map((value, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input
-                          value={value}
-                          onChange={(e) => updateVariationValue(index, e.target.value)}
-                          placeholder="Digite um valor"
-                        />
-                        {newVariation.values.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeVariationValue(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={addVariationValue}
-                      className="flex items-center gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Adicionar Valor
-                    </Button>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button onClick={addVariation}>Adicionar Variação</Button>
-                    <Button variant="outline" onClick={handleSaveVariations}>Salvar Todas</Button>
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="payment">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configurações de Pagamento</CardTitle>
-                <CardDescription>
-                  Configure a chave PIX que será exibida para os clientes
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="pixKey">Chave PIX</Label>
-                  <Input
-                    id="pixKey"
-                    value={pixKey}
-                    onChange={(e) => setPixKey(e.target.value)}
-                    placeholder="Digite sua chave PIX"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Esta chave será exibida para os clientes realizarem pagamentos via PIX
-                  </p>
-                </div>
-                <Button onClick={handleSavePixKey}>Salvar Chave PIX</Button>
+                <Button onClick={handleSaveFees} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Salvar Taxas
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
