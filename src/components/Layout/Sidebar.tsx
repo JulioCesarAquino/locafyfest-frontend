@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Users, 
-  ShoppingCart, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  ShoppingCart,
+  Settings,
   FileBarChart,
   Menu,
   X,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { APP_NAME } from '@/config/app';
 
 interface SidebarProps {
   userType: 'admin' | 'client';
@@ -48,7 +49,7 @@ export function Sidebar({ userType }: SidebarProps) {
       <Button
         variant="outline"
         size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden bg-white/90 backdrop-blur-sm"
+        className="fixed top-4 left-4 z-50 md:hidden bg-background/90 backdrop-blur-sm border-border"
         onClick={() => setIsOpen(!isOpen)}
       >
         {isOpen ? <X size={20} /> : <Menu size={20} />}
@@ -70,19 +71,23 @@ export function Sidebar({ userType }: SidebarProps) {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-6 border-b border-border/50">
-            <div className="flex items-center space-x-3">
+            <Link
+              to={userType === 'admin' ? '/admin/dashboard' : '/catalog'}
+              onClick={() => setIsOpen(false)}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+            >
               <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
                 <Package className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gradient-primary">
-                  Festa System
+                  {APP_NAME}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {userType === 'admin' ? 'Painel Admin' : 'Portal Cliente'}
                 </p>
               </div>
-            </div>
+            </Link>
           </div>
 
           {/* Navigation */}

@@ -1,91 +1,250 @@
-import { Bell, User, LogOut, Moon, Sun, Settings } from 'lucide-react';
+import { Bell, User, LogOut, Moon, Sun, Settings, CheckCheck, ShoppingCart, CreditCard, Package, AlertTriangle, Info, Truck, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
-import { logout } from "@/services/authService";
-import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useState, useEffect, useCallback } from 'react';
+import { logout } from '@/services/authService';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { storageUrl } from '@/lib/utils';
+import {
+  getMyNotifications,
+  markAsRead,
+  markAllAsRead,
+  type NotificationAPI,
+} from '@/services/notifications';
+
 interface HeaderProps {
   userName: string;
   userType: 'admin' | 'client';
   companyName?: string;
 }
-export function Header({
-  userName,
-  userType,
-  companyName
-}: HeaderProps) {
-  const [notifications] = useState(3);
+
+const TYPE_ICON: Record<string, React.ElementType> = {
+  order_confirmed:   CheckCheck,
+  order_delivered:   ShoppingCart,
+  order_returned:    ShoppingCart,
+  order_cancelled:   AlertTriangle,
+  payment_received:  CreditCard,
+  payment_failed:    CreditCard,
+  reminder_return:   AlertTriangle,
+  product_available: Package,
+  order_to_deliver:  Truck,
+  order_to_collect:  RotateCcw,
+  order_overdue:     AlertTriangle,
+};
+
+function timeAgo(dateStr: string) {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return 'agora';
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
+}
+
+const POLL_INTERVAL = 30_000; // 30s
+
+export function Header({ userName, userType, companyName }: HeaderProps) {
   const navigate = useNavigate();
   const { resolvedTheme, setTheme } = useTheme();
+  const { userAvatarPath } = useAuth();
+  const avatarUrl = storageUrl(userAvatarPath);
+
+  const [notifications, setNotifications] = useState<NotificationAPI[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const data = await getMyNotifications();
+      setNotifications(data);
+    } catch {
+      // silently fail — não bloquear a UI
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+
+  const handleMarkRead = async (n: NotificationAPI) => {
+    if (!n.is_read) {
+      await markAsRead(n.id);
+      setNotifications((prev) =>
+        prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x))
+      );
+    }
+    if (n.action_url) navigate(n.action_url);
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllAsRead();
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  };
+
   const toggleDarkMode = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  return <header className="h-16 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 bg-background/80">
-    {/* Left Section */}
-    <div className="flex items-center space-x-4">
-      <div className="flex-1">
-        <h1 className="text-sm sm:text-lg font-semibold text-foreground truncate">
-          {userType === 'admin' ? 'Painel Admin' : 'Portal Cliente'}
-        </h1>
-        {companyName && <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{companyName}</p>}
+
+  const recent = [...notifications]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 8);
+
+  return (
+    <header className="h-16 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 bg-background/80">
+      {/* Left */}
+      <div className="flex items-center space-x-4">
+        {companyName && (
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+            {companyName}
+          </p>
+        )}
       </div>
-    </div>
 
-    {/* Right Section */}
-    <div className="flex items-center space-x-2 sm:space-x-4">
-      {/* Theme Toggle */}
-      <Button variant="outline" size="icon" onClick={toggleDarkMode} className="w-8 h-8 sm:w-9 sm:h-9 hidden sm:flex">
-        {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-      </Button>
+      {/* Right */}
+      <div className="flex items-center space-x-2 sm:space-x-4">
+        {/* Theme Toggle */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleDarkMode}
+          className="w-8 h-8 sm:w-9 sm:h-9 hidden sm:flex"
+        >
+          {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </Button>
 
-      {/* Notifications */}
-      <Button variant="outline" size="icon" className="relative w-8 h-8 sm:w-9 sm:h-9 hidden sm:flex">
-        <Bell size={16} />
-        {notifications > 0 && <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs bg-danger">
-          {notifications}
-        </Badge>}
-      </Button>
+        {/* Notifications */}
+        <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="relative w-8 h-8 sm:w-9 sm:h-9 hidden sm:flex"
+            >
+              <Bell size={16} />
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs bg-danger">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
 
-      {/* User Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex items-center space-x-2 h-8 sm:h-9 px-2 sm:px-3">
-            <Avatar className="w-6 h-6 sm:w-8 sm:h-8">
-              <AvatarImage src="" />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs sm:text-sm">
-                {userName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="text-left hidden lg:block">
-              <p className="text-sm font-medium truncate max-w-32">{userName}</p>
-              <p className="text-xs text-muted-foreground capitalize">{userType}</p>
+          <DropdownMenuContent align="end" className="w-80 bg-background border-border z-50">
+            <div className="flex items-center justify-between px-3 py-2">
+              <DropdownMenuLabel className="p-0">
+                Notificações {unreadCount > 0 && (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    ({unreadCount} não lida{unreadCount !== 1 ? 's' : ''})
+                  </span>
+                )}
+              </DropdownMenuLabel>
+              {unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={handleMarkAllRead}
+                >
+                  <CheckCheck className="w-3 h-3 mr-1" />
+                  Marcar todas
+                </Button>
+              )}
             </div>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-background border-border z-50">
-          <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate("/admin/admins", { state: { editAdminId: "1" } })}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Perfil</span>
-          </DropdownMenuItem>
-          {userType === 'admin' && (
-            <DropdownMenuItem onClick={() => navigate("/admin/settings")}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Configurações</span>
+
+            <DropdownMenuSeparator />
+
+            {recent.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                Nenhuma notificação.
+              </div>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {recent.map((n) => {
+                  const Icon = TYPE_ICON[n.type] ?? Info;
+                  return (
+                    <DropdownMenuItem
+                      key={n.id}
+                      className={`flex items-start gap-3 px-3 py-3 cursor-pointer ${!n.is_read ? 'bg-muted/40' : ''}`}
+                      onClick={() => handleMarkRead(n)}
+                    >
+                      <div className={`mt-0.5 shrink-0 rounded-full p-1.5 ${!n.is_read ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm leading-snug truncate ${!n.is_read ? 'font-semibold' : 'font-medium'}`}>
+                          {n.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                          {n.message}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {timeAgo(n.created_at)}
+                        </p>
+                      </div>
+                      {!n.is_read && (
+                        <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* User Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center space-x-2 h-8 sm:h-9 px-2 sm:px-3"
+            >
+              <Avatar className="w-6 h-6 sm:w-8 sm:h-8">
+                <AvatarImage src={avatarUrl} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs sm:text-sm">
+                  {userName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="text-left hidden lg:block">
+                <p className="text-sm font-medium truncate max-w-32">{userName}</p>
+                <p className="text-xs text-muted-foreground capitalize">{userType}</p>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-background border-border z-50">
+            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => navigate(userType === 'client' ? '/profile' : '/admin/admins')}
+            >
+              <User className="mr-2 h-4 w-4" />
+              <span>Perfil</span>
             </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-danger"
-            onClick={logout}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Sair</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  </header>;
+            {userType === 'admin' && (
+              <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Configurações</span>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-danger" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sair</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Package, Sparkles, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { APP_NAME, APP_SUBTITLE } from "@/config/app";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -131,8 +132,8 @@ export default function ForgotPassword() {
             </div>
             <Sparkles className="w-6 h-6 text-primary animate-pulse" />
           </div>
-          <h1 className="text-3xl font-bold text-gradient-primary mb-2">Festa System</h1>
-          <p className="text-muted-foreground">Sistema de Locação para Eventos e Festas</p>
+          <h1 className="text-3xl font-bold text-gradient-primary mb-2">{APP_NAME}</h1>
+          <p className="text-muted-foreground">{APP_SUBTITLE}</p>
         </div>
 
         <Card className="bg-white/90 backdrop-blur-xl border-border/50 shadow-lg">
@@ -278,7 +279,7 @@ export default function ForgotPassword() {
           </CardContent>
         </Card>
         <div className="text-center mt-8">
-          <p className="text-sm text-muted-foreground">© 2026 Festa System. Todos os direitos reservados.</p>
+          <p className="text-sm text-muted-foreground">© 2026 {APP_NAME}. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>

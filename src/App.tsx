@@ -13,6 +13,7 @@ import VerifyEmail from "./pages/auth/VerifyEmail";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Products from "./pages/admin/Products";
 import Clients from "./pages/admin/Clients";
+import ClientDetail from "./pages/admin/ClientDetail";
 import Orders from "./pages/admin/Orders";
 import Settings from "./pages/admin/Settings";
 import Reports from "./pages/admin/Reports";
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/admin/dashboard" element={<Index />} />
               <Route path="/admin/products" element={<Products />} />
               <Route path="/admin/clients" element={<Clients />} />
+              <Route path="/admin/clients/:id" element={<ClientDetail />} />
               <Route path="/admin/orders" element={<Orders />} />
               <Route path="/admin/settings" element={<Settings />} />
               <Route path="/admin/reports" element={<Reports />} />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Package, Sparkles, AlertCircle, CheckCircle2, Mail } from 'lucide-react';
+import { Package, Sparkles, AlertCircle, CheckCircle2, Mail, Link2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { APP_NAME, APP_SUBTITLE } from "@/config/app";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import apiClient from '@/services/apiClient';
@@ -14,8 +15,11 @@ function maskEmail(email: string): string {
 export default function VerifyEmail() {
   const navigate = useNavigate();
   const location = useLocation();
-  const email: string = (location.state as { email?: string; password?: string })?.email ?? '';
-  const password: string = (location.state as { email?: string; password?: string })?.password ?? '';
+  type LocationState = { email?: string; password?: string; pending_link?: boolean };
+  const state = location.state as LocationState | null;
+  const email: string = state?.email ?? '';
+  const password: string = state?.password ?? '';
+  const pendingLink: boolean = state?.pending_link ?? false;
 
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,13 +28,6 @@ export default function VerifyEmail() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const wasDark = root.classList.contains('dark');
-    root.classList.remove('dark');
-    return () => { if (wasDark) root.classList.add('dark'); };
-  }, []);
 
   useEffect(() => {
     if (!email) navigate('/register', { replace: true });
@@ -112,11 +109,11 @@ export default function VerifyEmail() {
             </div>
             <Sparkles className="w-6 h-6 text-primary animate-pulse" />
           </div>
-          <h1 className="text-3xl font-bold text-gradient-primary mb-2">Festa System</h1>
-          <p className="text-muted-foreground">Sistema de Locação para Eventos e Festas</p>
+          <h1 className="text-3xl font-bold text-gradient-primary mb-2">{APP_NAME}</h1>
+          <p className="text-muted-foreground">{APP_SUBTITLE}</p>
         </div>
 
-        <Card className="bg-white/90 backdrop-blur-xl border-border/50 shadow-lg">
+        <Card className="backdrop-blur-xl border-border/50 shadow-lg">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-2">
               <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
@@ -137,6 +134,15 @@ export default function VerifyEmail() {
                   <p className="text-lg font-semibold text-green-700">E-mail verificado!</p>
                   <p className="text-sm text-muted-foreground mt-1">Redirecionando para o login...</p>
                 </div>
+                {pendingLink && (
+                  <div className="w-full rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-700 flex items-start gap-2 text-left">
+                    <Link2 className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>
+                      Identificamos um possível cadastro anterior com seus dados.
+                      Um administrador irá verificar e, se confirmado, seus históricos serão unificados.
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -151,7 +157,7 @@ export default function VerifyEmail() {
                       value={digit}
                       onChange={e => handleDigit(i, e.target.value)}
                       onKeyDown={e => handleKeyDown(i, e)}
-                      className="w-11 h-14 text-center text-xl font-bold border-2 rounded-lg outline-none transition-colors focus:border-primary bg-white text-foreground border-border"
+                      className="w-11 h-14 text-center text-xl font-bold border-2 rounded-lg outline-none transition-colors focus:border-primary bg-background text-foreground border-border"
                     />
                   ))}
                 </div>
@@ -189,7 +195,7 @@ export default function VerifyEmail() {
         </Card>
 
         <div className="text-center mt-8">
-          <p className="text-sm text-muted-foreground">© 2026 Festa System. Todos os direitos reservados.</p>
+          <p className="text-sm text-muted-foreground">© 2026 {APP_NAME}. Todos os direitos reservados.</p>
         </div>
       </div>
     </div>

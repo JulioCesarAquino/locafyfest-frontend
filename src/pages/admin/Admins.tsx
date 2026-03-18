@@ -269,7 +269,7 @@ export default function Admins() {
   };
 
   return (
-    <AppLayout userType="admin" userName="Administrador" companyName="Sistema de Gestão">
+    <AppLayout userType="admin" companyName="Sistema de Gestão">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

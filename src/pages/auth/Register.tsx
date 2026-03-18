@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Eye, EyeOff, Package, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { APP_NAME, APP_SUBTITLE } from "@/config/app";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,12 +95,8 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const root = document.documentElement;
-    const wasDark = root.classList.contains('dark');
-    root.classList.remove('dark');
-    return () => { if (wasDark) root.classList.add('dark'); };
-  }, []);
+  // Estado do step de ativação de cliente manual
+  const [manualClient, setManualClient] = useState<{ id: number; name: string; cancelled: boolean } | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -170,7 +167,7 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      await apiClient.post('/auth/register', {
+      const res = await apiClient.post('/auth/register', {
         name: form.name,
         email: form.email,
         phone: form.phone,
@@ -180,12 +177,27 @@ export default function Register() {
         user_type: 'client',
         ...(personType === 'pf' ? { cpf: form.cpf } : { cnpj: form.cnpj, company_name: form.company_name }),
       });
-      navigate('/verify-email', { state: { email: form.email } });
+      navigate('/verify-email', {
+        state: {
+          email: form.email,
+          pending_link: !!(res.data as { pending_link?: boolean }).pending_link,
+        },
+      });
     } catch (err: unknown) {
-      type ApiError = { response?: { data?: { errors?: Record<string, string[]>; message?: string } } };
+      type ApiError = { response?: { status?: number; data?: { errors?: Record<string, string[]>; message?: string; manual_client_found?: boolean; manual_client_id?: number; manual_client_name?: string; account_cancelled?: boolean } } };
       const { response } = err as ApiError;
-      const apiErrors = response?.data?.errors ?? {};
 
+      // Cadastro manual encontrado (ativo ou cancelado) → mostrar step de ativação
+      if (response?.status === 409 && response.data?.manual_client_found) {
+        setManualClient({
+          id: response.data.manual_client_id!,
+          name: response.data.manual_client_name!,
+          cancelled: response.data.account_cancelled ?? false,
+        });
+        return;
+      }
+
+      const apiErrors = response?.data?.errors ?? {};
       if (Object.keys(apiErrors).length > 0) {
         const mapped: Record<string, string> = {};
         for (const [field, messages] of Object.entries(apiErrors)) {
@@ -193,15 +205,162 @@ export default function Register() {
         }
         setFieldErrors((prev) => ({ ...prev, ...mapped }));
       } else {
-        setError(
-          response?.data?.message ||
-          'Erro ao criar conta. Verifique os dados e tente novamente.'
-        );
+        setError(response?.data?.message || 'Erro ao criar conta. Verifique os dados e tente novamente.');
       }
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleActivate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualClient) return;
+    setError('');
+
+    if (!validatePassword(form.password)) {
+      setFieldErrors({ password: 'A senha não atende todos os critérios.' });
+      return;
+    }
+    if (form.password !== form.password_confirmation) {
+      setFieldErrors({ password_confirmation: 'As senhas não conferem.' });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await apiClient.post('/auth/activate-manual-client', {
+        manual_client_id: manualClient.id,
+        password: form.password,
+        password_confirmation: form.password_confirmation,
+      });
+      navigate('/verify-email', { state: { email: form.email } });
+    } catch (err: unknown) {
+      type ApiError = { response?: { data?: { message?: string } } };
+      const { response } = err as ApiError;
+      setError(response?.data?.message || 'Erro ao ativar conta. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Step de ativação de cliente manual ──────────────────────────────────────
+  if (manualClient) {
+    return (
+      <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
+        <div className="relative w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center space-x-3 mb-4">
+              <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-primary">
+                <Package className="w-8 h-8 text-white" />
+              </div>
+              <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+            </div>
+            <h1 className="text-3xl font-bold text-gradient-primary mb-2">{APP_NAME}</h1>
+          </div>
+
+          <Card className="backdrop-blur-xl border-border/50 shadow-lg">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-xl text-center">
+                {manualClient.cancelled ? 'Conta cancelada encontrada!' : 'Cadastro encontrado!'}
+              </CardTitle>
+              <CardDescription className="text-center">
+                {manualClient.cancelled ? (
+                  <>
+                    Olá, <strong>{manualClient.name}</strong>! Encontramos uma conta cancelada com seus dados.
+                    Defina uma senha para <strong>reativá-la</strong>.
+                  </>
+                ) : (
+                  <>
+                    Olá, <strong>{manualClient.name}</strong>! Já existe um cadastro com seus dados.
+                    Defina uma senha para ativar sua conta.
+                  </>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleActivate} className="space-y-4">
+                {/* Senha */}
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="password" name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Mínimo 8 caracteres"
+                      value={form.password} onChange={handleChange} required
+                      className={`h-11 pr-10 ${fieldErrors.password ? 'border-red-400' : ''}`}
+                    />
+                    <Button type="button" variant="ghost" size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {fieldErrors.password && <p className="text-xs text-red-500">{fieldErrors.password}</p>}
+                  {form.password.length > 0 && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
+                      {PASSWORD_RULES.map((rule) => {
+                        const ok = rule.test(form.password);
+                        return (
+                          <span key={rule.key} className={`flex items-center gap-1 text-xs ${ok ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            <CheckCircle2 className={`h-3 w-3 shrink-0 ${ok ? 'text-green-500' : 'text-gray-300'}`} />
+                            {rule.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Confirmar senha */}
+                <div className="space-y-2">
+                  <Label htmlFor="password_confirmation">Confirmar senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="password_confirmation" name="password_confirmation"
+                      type={showConfirm ? 'text' : 'password'}
+                      placeholder="Repita a senha"
+                      value={form.password_confirmation} onChange={handleChange} required
+                      className={`h-11 pr-10 ${fieldErrors.password_confirmation ? 'border-red-400' : ''}`}
+                    />
+                    <Button type="button" variant="ghost" size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowConfirm(!showConfirm)}>
+                      {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {fieldErrors.password_confirmation && (
+                    <p className="text-xs text-red-500">{fieldErrors.password_confirmation}</p>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full h-11 btn-primary" disabled={isLoading}>
+                  {isLoading
+                    ? <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>{manualClient.cancelled ? 'Reativando...' : 'Ativando...'}</span></div>
+                    : manualClient.cancelled ? 'Reativar minha conta' : 'Ativar minha conta'}
+                </Button>
+
+                <div className="text-center">
+                  <Button variant="link" className="text-sm text-muted-foreground h-auto p-0"
+                    onClick={() => { setManualClient(null); setError(''); setFieldErrors({}); }}>
+                    Voltar ao cadastro
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-surface flex items-center justify-center p-4">
@@ -215,11 +374,11 @@ export default function Register() {
             </div>
             <Sparkles className="w-6 h-6 text-primary animate-pulse" />
           </div>
-          <h1 className="text-3xl font-bold text-gradient-primary mb-2">Festa System</h1>
-          <p className="text-muted-foreground">Sistema de Locação para Eventos e Festas</p>
+          <h1 className="text-3xl font-bold text-gradient-primary mb-2">{APP_NAME}</h1>
+          <p className="text-muted-foreground">{APP_SUBTITLE}</p>
         </div>
 
-        <Card className="bg-white/90 backdrop-blur-xl border-border/50 shadow-lg">
+        <Card className="backdrop-blur-xl border-border/50 shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Criar conta</CardTitle>
             <CardDescription className="text-center">
@@ -420,7 +579,7 @@ export default function Register() {
 
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
-            © 2026 Festa System. Todos os direitos reservados.
+            © 2026 {APP_NAME}. Todos os direitos reservados.
           </p>
         </div>
       </div>

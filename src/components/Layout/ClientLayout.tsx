@@ -1,13 +1,10 @@
 import { ReactNode } from 'react';
 import { ClientSidebar } from './ClientSidebar';
 import { Header } from './Header';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface ClientLayoutProps {
-  children: ReactNode;
-  userName?: string;
-}
-
-export function ClientLayout({ children, userName = "Maria Silva" }: ClientLayoutProps) {
+export function ClientLayout({ children }: { children: ReactNode }) {
+  const { userName } = useAuth();
   return (
     <div className="min-h-screen bg-gradient-surface">
       <ClientSidebar />
