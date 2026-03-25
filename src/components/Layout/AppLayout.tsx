@@ -11,14 +11,15 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, userType, companyName }: AppLayoutProps) {
   const { userName } = useAuth();
+
   return (
     <div className="min-h-screen bg-gradient-surface">
       <Sidebar userType={userType} />
       <div className="md:ml-72">
-        <Header 
-          userName={userName} 
-          userType={userType} 
-          companyName={companyName} 
+        <Header
+          userName={userName}
+          userType={userType}
+          companyName={companyName}
         />
         <main className="p-6">
           {children}

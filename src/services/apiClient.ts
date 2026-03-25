@@ -58,17 +58,19 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem("refresh_token");
-        if (!refreshToken) {
-          throw new Error("No refresh token");
+        const expiredToken = localStorage.getItem("access_token");
+        if (!expiredToken) {
+          throw new Error("No token");
         }
 
-        const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/refresh`, {
-          refresh_token: refreshToken,
-        });
+        // JWT refresh: envia o token expirado no header para obter um novo
+        const { data } = await axios.post(
+          `${import.meta.env.VITE_API_URL}/auth/refresh`,
+          {},
+          { headers: { Authorization: `Bearer ${expiredToken}` } },
+        );
 
         localStorage.setItem("access_token", data.access_token);
-
         apiClient.defaults.headers.common["Authorization"] = "Bearer " + data.access_token;
         processQueue(null, data.access_token);
 
@@ -76,7 +78,6 @@ apiClient.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
         localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
         window.location.href = "/login";
         return Promise.reject(err);
       } finally {

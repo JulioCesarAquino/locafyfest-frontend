@@ -10,24 +10,28 @@ import {
   Menu,
   X,
   Calendar,
-  UserCheck
+  UserCheck,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { APP_NAME } from '@/config/app';
+import { AbceLogo } from '@/components/AbceLogo';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarProps {
   userType: 'admin' | 'client';
 }
 
 const adminMenuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/admin/dashboard' },
-  { icon: Package, label: 'Produtos', href: '/admin/products' },
-  { icon: Users, label: 'Clientes', href: '/admin/clients' },
-  { icon: ShoppingCart, label: 'Pedidos', href: '/admin/orders' },
-  { icon: FileBarChart, label: 'Relatórios', href: '/admin/reports' },
-  { icon: UserCheck, label: 'Administradores', href: '/admin/admins' },
-  { icon: Settings, label: 'Configurações', href: '/admin/settings' },
+  { icon: LayoutDashboard, label: 'Dashboard',        href: '/admin/dashboard', permission: 'dashboard' },
+  { icon: Package,         label: 'Produtos',         href: '/admin/products',  permission: 'products'  },
+  { icon: Users,           label: 'Clientes',         href: '/admin/clients',   permission: 'clients'   },
+  { icon: ShoppingCart,    label: 'Pedidos',          href: '/admin/orders',    permission: 'orders'    },
+  { icon: Tag,             label: 'Cupons',           href: '/admin/coupons',   permission: 'orders'    },
+  { icon: FileBarChart,    label: 'Relatórios',       href: '/admin/reports',   permission: 'reports'   },
+  { icon: UserCheck,       label: 'Administradores',  href: '/admin/admins',    permission: 'admins'    },
+  { icon: Settings,        label: 'Configurações',    href: '/admin/settings',  permission: 'settings'  },
 ];
 
 const clientMenuItems = [
@@ -40,8 +44,13 @@ const clientMenuItems = [
 export function Sidebar({ userType }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  
-  const menuItems = userType === 'admin' ? adminMenuItems : clientMenuItems;
+  const { permissions, userType: authUserType } = useAuth();
+
+  const menuItems = userType === 'admin'
+    ? adminMenuItems.filter(item =>
+        authUserType === 'super_admin' || permissions.includes(item.permission)
+      )
+    : clientMenuItems;
 
   return (
     <>
@@ -76,9 +85,7 @@ export function Sidebar({ userType }: SidebarProps) {
               onClick={() => setIsOpen(false)}
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
             >
-              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6 text-white" />
-              </div>
+              <AbceLogo height={48} />
               <div>
                 <h2 className="text-lg font-semibold text-gradient-primary">
                   {APP_NAME}

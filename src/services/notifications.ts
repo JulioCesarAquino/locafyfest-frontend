@@ -47,3 +47,11 @@ export const markAsRead = async (id: number): Promise<void> => {
 export const markAllAsRead = async (): Promise<void> => {
   await apiClient.post('/notifications/mark-all-read');
 };
+
+export const deleteNotification = async (id: number): Promise<void> => {
+  await apiClient.delete(`/notifications/${id}`);
+};
+
+export const deleteAllNotifications = async (ids: number[]): Promise<void> => {
+  await Promise.all(ids.map((id) => apiClient.delete(`/notifications/${id}`)));
+};

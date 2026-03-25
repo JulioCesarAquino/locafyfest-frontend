@@ -5,6 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const BRL_NO_SYMBOL = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Formata valor como moeda brasileira: R$ 1.234,56 */
+export function formatCurrency(value: string | number | null | undefined): string {
+  const num = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
+  return BRL.format(isFinite(num) ? num : 0);
+}
+
+/** Formata valor sem o símbolo R$: 1.234,56 */
+export function formatPrice(value: string | number | null | undefined): string {
+  const num = typeof value === 'string' ? parseFloat(value) : (value ?? 0);
+  return BRL_NO_SYMBOL.format(isFinite(num) ? num : 0);
+}
+
 const STORAGE_URL = import.meta.env.VITE_STORAGE_URL ?? 'http://localhost:8000/storage';
 
 export function storageUrl(path: string): string {

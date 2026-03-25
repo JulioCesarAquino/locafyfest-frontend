@@ -7,7 +7,7 @@ interface LoginData {
 
 export interface SignInPayload {
   token: string;
-  type: "admin" | "client";
+  type: "admin" | "client" | "super_admin";
   name: string;
   avatarPath: string;
 }
