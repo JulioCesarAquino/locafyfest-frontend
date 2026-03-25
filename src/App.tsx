@@ -4,25 +4,27 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import VerifyEmail from "./pages/auth/VerifyEmail";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import Products from "./pages/admin/Products";
-import Clients from "./pages/admin/Clients";
-import ClientDetail from "./pages/admin/ClientDetail";
-import Orders from "./pages/admin/Orders";
-import Settings from "./pages/admin/Settings";
-import Reports from "./pages/admin/Reports";
-import Admins from "./pages/admin/Admins";
-import Catalog from "./pages/client/Catalog";
-import MyOrder from "./pages/client/MyOrder";
-import History from "./pages/client/History";
-import Profile from "./pages/client/Profile";
-import Favorites from "./pages/client/Favorites";
+import Index from "./modules/admin/dashboard";
+import Login from "./modules/auth/login";
+import Register from "./modules/auth/register";
+import VerifyEmail from "./modules/auth/verify-email";
+import ForgotPassword from "./modules/auth/forgot-password";
+import Products from "./modules/admin/products";
+import Clients from "./modules/admin/clients";
+import ClientDetail from "./modules/admin/clients/detail";
+import Orders from "./modules/admin/orders";
+import Settings from "./modules/admin/settings";
+import Reports from "./modules/admin/reports";
+import Admins from "./modules/admin/admins";
+import Coupons from "./modules/admin/coupons";
+import Catalog from "./modules/client/catalog";
+import MyOrder from "./modules/client/my-order";
+import History from "./modules/client/history";
+import Profile from "./modules/client/profile";
+import Favorites from "./modules/client/favorites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,8 +35,9 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
+          <CartProvider>
           <Routes>
             {/* Rotas públicas */}
             <Route path="/login" element={<Login />} />
@@ -45,16 +48,38 @@ const App = () => (
             {/* Rota raiz redireciona para login */}
             <Route path="/" element={<Navigate to="/login" replace />} />
 
-            {/* Rotas protegidas — somente admin */}
-            <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+            {/* Rotas protegidas — admin e super_admin */}
+            <Route element={<ProtectedRoute allowedRoles={["admin", "super_admin"]} />}>
               <Route path="/admin/dashboard" element={<Index />} />
-              <Route path="/admin/products" element={<Products />} />
-              <Route path="/admin/clients" element={<Clients />} />
-              <Route path="/admin/clients/:id" element={<ClientDetail />} />
-              <Route path="/admin/orders" element={<Orders />} />
-              <Route path="/admin/settings" element={<Settings />} />
-              <Route path="/admin/reports" element={<Reports />} />
-              <Route path="/admin/admins" element={<Admins />} />
+
+              <Route element={<ProtectedRoute requiredPermission="products" />}>
+                <Route path="/admin/products" element={<Products />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredPermission="clients" />}>
+                <Route path="/admin/clients" element={<Clients />} />
+                <Route path="/admin/clients/:id" element={<ClientDetail />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredPermission="orders" />}>
+                <Route path="/admin/orders" element={<Orders />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredPermission="settings" />}>
+                <Route path="/admin/settings" element={<Settings />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredPermission="reports" />}>
+                <Route path="/admin/reports" element={<Reports />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredPermission="admins" />}>
+                <Route path="/admin/admins" element={<Admins />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredPermission="orders" />}>
+                <Route path="/admin/coupons" element={<Coupons />} />
+              </Route>
             </Route>
 
             {/* Rotas protegidas — somente client */}
@@ -68,6 +93,7 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

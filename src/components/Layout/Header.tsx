@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Moon, Sun, Settings, CheckCheck, ShoppingCart, CreditCard, Package, AlertTriangle, Info, Truck, RotateCcw } from 'lucide-react';
+import { Bell, User, LogOut, Moon, Sun, Settings, CheckCheck, ShoppingCart, CreditCard, Package, AlertTriangle, Info, Truck, RotateCcw, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +20,8 @@ import {
   getMyNotifications,
   markAsRead,
   markAllAsRead,
+  deleteNotification,
+  deleteAllNotifications,
   type NotificationAPI,
 } from '@/services/notifications';
 
@@ -28,6 +30,12 @@ interface HeaderProps {
   userType: 'admin' | 'client';
   companyName?: string;
 }
+
+const ORDER_NOTIFICATION_TYPES = new Set([
+  'order_confirmed', 'order_delivered', 'order_returned', 'order_cancelled',
+  'reminder_return', 'order_to_deliver', 'order_to_collect', 'order_overdue',
+  'payment_received', 'payment_failed',
+]);
 
 const TYPE_ICON: Record<string, React.ElementType> = {
   order_confirmed:   CheckCheck,
@@ -86,12 +94,37 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
         prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x))
       );
     }
-    if (n.action_url) navigate(n.action_url);
+    setNotifOpen(false);
+
+    // Resolve destination — normalize backend URLs like /orders/18
+    const ordersRouteMatch = n.action_url?.match(/^\/orders\/(\d+)$/);
+    const orderId = ordersRouteMatch?.[1] ?? n.data?.order_id;
+
+    if (orderId) {
+      if (userType === 'client') {
+        navigate(`/history?order=${orderId}`);
+      } else {
+        navigate('/admin/orders');
+      }
+    } else if (n.action_url) {
+      navigate(n.action_url);
+    }
   };
 
   const handleMarkAllRead = async () => {
     await markAllAsRead();
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    await deleteNotification(id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const handleDeleteAll = async () => {
+    await deleteAllNotifications(notifications.map((n) => n.id));
+    setNotifications([]);
   };
 
   const toggleDarkMode = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
@@ -149,17 +182,30 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
                   </span>
                 )}
               </DropdownMenuLabel>
-              {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={handleMarkAllRead}
-                >
-                  <CheckCheck className="w-3 h-3 mr-1" />
-                  Marcar todas
-                </Button>
-              )}
+              <div className="flex items-center gap-1">
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={handleMarkAllRead}
+                  >
+                    <CheckCheck className="w-3 h-3 mr-1" />
+                    Marcar todas
+                  </Button>
+                )}
+                {notifications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto py-0 px-1 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={handleDeleteAll}
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Limpar
+                  </Button>
+                )}
+              </div>
             </div>
 
             <DropdownMenuSeparator />
@@ -192,9 +238,17 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
                           {timeAgo(n.created_at)}
                         </p>
                       </div>
-                      {!n.is_read && (
-                        <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-primary" />
-                      )}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {!n.is_read && (
+                          <span className="w-2 h-2 rounded-full bg-primary" />
+                        )}
+                        <button
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                          onClick={(e) => handleDelete(e, n.id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </DropdownMenuItem>
                   );
                 })}

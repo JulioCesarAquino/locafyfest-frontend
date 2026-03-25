@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { APP_NAME } from '@/config/app';
+import { APP_NAME, WHATSAPP_NUMBER } from '@/config/app';
 import {
   Package,
   ShoppingCart,
@@ -9,10 +9,10 @@ import {
   X,
   User,
   Heart,
-  Home
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { AbceLogo } from '@/components/AbceLogo';
 
 const clientMenuItems = [
   { icon: Package, label: 'Catálogo', href: '/catalog' },
@@ -59,9 +59,7 @@ export function ClientSidebar() {
               onClick={() => setIsOpen(false)}
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
             >
-              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-                <Home className="w-6 h-6 text-white" />
-              </div>
+              <AbceLogo height={64} />
               <div>
                 <h2 className="text-lg font-semibold text-gradient-primary">
                   {APP_NAME}
@@ -111,7 +109,12 @@ export function ClientSidebar() {
               <p className="text-xs text-primary/80 mb-2">
                 Entre em contato conosco
               </p>
-              <Button variant="outline" size="sm" className="w-full text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => window.open(`https://wa.me/${WHATSAPP_NUMBER}`, '_blank')}
+              >
                 WhatsApp
               </Button>
             </div>
