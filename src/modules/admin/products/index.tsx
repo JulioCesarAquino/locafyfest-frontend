@@ -40,6 +40,7 @@ import {
   Loader2,
   ImageOff,
   Link2,
+  Image,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { storageUrl, formatPrice } from '@/lib/utils';
@@ -147,6 +148,7 @@ export default function Products() {
         components: (full.components ?? []).map((c) => ({
           product_id: c.component_product_id,
           quantity: c.quantity,
+          is_selectable_by_customer: c.is_selectable_by_customer ?? false,
         })),
       });
       setImagePreview(primaryImageUrl(full));
@@ -169,6 +171,7 @@ export default function Products() {
         components: (product.components ?? []).map((c) => ({
           product_id: c.component_product_id,
           quantity: c.quantity,
+          is_selectable_by_customer: c.is_selectable_by_customer ?? false,
         })),
       });
     }
@@ -188,7 +191,7 @@ export default function Products() {
     }));
   };
 
-  const updateVariation = (index: number, field: keyof FormVariation, value: string | number) => {
+  const updateVariation = (index: number, field: keyof FormVariation, value: string | number | File | null) => {
     setForm((prev) => ({
       ...prev,
       variations: prev.variations.map((v, i) =>
@@ -207,7 +210,7 @@ export default function Products() {
   const addComponent = () => {
     setForm((prev) => ({
       ...prev,
-      components: [...prev.components, { product_id: 0, quantity: 1 }],
+      components: [...prev.components, { product_id: 0, quantity: 1, is_selectable_by_customer: false }],
     }));
   };
 
@@ -552,44 +555,63 @@ export default function Products() {
                   <p className="text-xs text-muted-foreground">Nenhum componente adicionado.</p>
                 )}
                 {form.components.map((comp, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-border/40 bg-surface/20">
-                    <div className="flex-1">
-                      <Select
-                        value={comp.product_id > 0 ? String(comp.product_id) : ''}
-                        onValueChange={(v) => updateComponent(idx, 'product_id', parseInt(v))}
+                  <div key={idx} className="flex flex-col gap-2 p-3 rounded-lg border border-border/40 bg-surface/20">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <Select
+                          value={comp.product_id > 0 ? String(comp.product_id) : ''}
+                          onValueChange={(v) => updateComponent(idx, 'product_id', parseInt(v))}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecionar produto..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableForComponent.map((p) => (
+                              <SelectItem key={p.id} value={String(p.id)}>
+                                {p.name} (estoque: {p.quantity_available})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="Qtd"
+                          value={comp.quantity}
+                          onChange={(e) =>
+                            updateComponent(idx, 'quantity', parseInt(e.target.value) || 1)
+                          }
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive shrink-0"
+                        onClick={() => removeComponent(idx)}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Selecionar produto..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableForComponent.map((p) => (
-                            <SelectItem key={p.id} value={String(p.id)}>
-                              {p.name} (estoque: {p.quantity_available})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <Trash2 size={15} />
+                      </Button>
                     </div>
-                    <div className="w-24">
-                      <Input
-                        type="number"
-                        min="1"
-                        placeholder="Qtd"
-                        value={comp.quantity}
-                        onChange={(e) =>
-                          updateComponent(idx, 'quantity', parseInt(e.target.value) || 1)
+                    {/* Toggle selecionável pelo cliente */}
+                    <div className="flex items-center gap-2 pl-1">
+                      <Switch
+                        checked={comp.is_selectable_by_customer}
+                        onCheckedChange={(v) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            components: prev.components.map((c, i) =>
+                              i === idx ? { ...c, is_selectable_by_customer: v } : c,
+                            ),
+                          }))
                         }
                       />
+                      <span className="text-xs text-muted-foreground">
+                        Cliente escolhe a variação (ex: tecido, estampa)
+                      </span>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive shrink-0"
-                      onClick={() => removeComponent(idx)}
-                    >
-                      <Trash2 size={15} />
-                    </Button>
                   </div>
                 ))}
               </div>
@@ -622,8 +644,31 @@ export default function Products() {
                     <Input
                       value={v.nome}
                       onChange={(e) => updateVariation(idx, 'nome', e.target.value)}
-                      placeholder="Ex: Cadeira, Mesa..."
+                      placeholder="Ex: Floral Rosa, Listrado Azul..."
                     />
+                    {/* Imagem da variação */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <label className="cursor-pointer flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                        <Image size={12} />
+                        {v.imageFile ? v.imageFile.name : v.image_path ? 'Alterar foto' : 'Adicionar foto'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            updateVariation(idx, 'imageFile', file);
+                          }}
+                        />
+                      </label>
+                      {(v.imageFile || v.image_path) && (
+                        <img
+                          src={v.imageFile ? URL.createObjectURL(v.imageFile) : storageUrl(v.image_path!)}
+                          alt="preview"
+                          className="w-8 h-8 rounded object-cover border"
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Preço (R$)</Label>

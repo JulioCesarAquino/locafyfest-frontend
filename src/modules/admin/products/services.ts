@@ -15,6 +15,7 @@ export interface ProductVariationAPI {
   id: number;
   name: string;
   value: string;
+  image_path: string | null;
   price_modifier: string;
   quantity_available: number;
   is_available: boolean;
@@ -24,12 +25,14 @@ export interface ProductComponentAPI {
   id: number;
   component_product_id: number;
   quantity: number;
+  is_selectable_by_customer: boolean;
   component_product?: {
     id: number;
     name: string;
     price: string;
     quantity_available: number;
     images?: ProductImageAPI[];
+    variations?: ProductVariationAPI[];
   };
 }
 
@@ -58,11 +61,19 @@ export interface FormVariation {
   nome: string;
   preco: number;
   quantidade: number;
+  image_path?: string | null;
+  imageFile?: File | null;
 }
 
 export interface FormComponent {
   product_id: number;
   quantity: number;
+  is_selectable_by_customer: boolean;
+}
+
+export interface ComponentSelection {
+  component_product_id: number;
+  variation_id: number;
 }
 
 export interface ProductForm {
@@ -90,7 +101,18 @@ async function buildFormData(form: ProductForm, image?: File | null): Promise<Fo
   fd.append('requires_assembly', form.requires_assembly ? '1' : '0');
 
   if (form.variations.length > 0) {
-    fd.append('variations', JSON.stringify(form.variations));
+    // Serializa variações sem o File (não pode JSON.stringify File)
+    const variationsPayload = form.variations.map(({ imageFile: _f, ...rest }) => rest);
+    fd.append('variations', JSON.stringify(variationsPayload));
+
+    // Upload de imagens por variação: variation_images[índice]
+    for (let i = 0; i < form.variations.length; i++) {
+      const file = form.variations[i].imageFile;
+      if (file) {
+        const resized = await resizeImage(file);
+        fd.append(`variation_images[${i}]`, resized, `variation_${i}.jpg`);
+      }
+    }
   }
 
   if (form.is_combo && form.components.length > 0) {
@@ -154,7 +176,8 @@ export const createProduct = async (form: ProductForm, image?: File | null) => {
 };
 
 export const updateProduct = async (id: number, form: ProductForm, image?: File | null) => {
-  // Send product data as JSON via PUT (no file upload issue)
+  // Dados do produto via JSON (sem arquivos)
+  const variationsPayload = form.variations.map(({ imageFile: _f, ...rest }) => rest);
   const payload: Record<string, unknown> = {
     name: form.name,
     description: form.description,
@@ -163,17 +186,33 @@ export const updateProduct = async (id: number, form: ProductForm, image?: File 
     is_combo: form.is_combo,
     is_available: form.is_available,
     requires_assembly: form.requires_assembly,
-    variations: form.variations,
+    variations: variationsPayload,
     components: form.is_combo ? form.components : [],
   };
   await apiClient.put(`/products/${id}`, payload);
 
-  // Upload new image separately if provided
+  // Upload de imagem do produto
   if (image) {
     const resized = await resizeImage(image);
     const fd = new FormData();
     fd.append('images[]', resized, 'product.jpg');
     await apiClient.post(`/products/${id}/upload-images`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+
+  // Upload de imagens de variações (se houver arquivos novos)
+  const hasVariationImages = form.variations.some((v) => v.imageFile);
+  if (hasVariationImages) {
+    const fd = new FormData();
+    for (let i = 0; i < form.variations.length; i++) {
+      const file = form.variations[i].imageFile;
+      if (file) {
+        const resized = await resizeImage(file);
+        fd.append(`variation_images[${i}]`, resized, `variation_${i}.jpg`);
+      }
+    }
+    await apiClient.post(`/products/${id}/upload-variation-images`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   }

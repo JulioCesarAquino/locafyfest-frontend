@@ -290,6 +290,7 @@ export default function MyOrder() {
           product_id: i.product.id,
           product_variation_id: i.variation?.id ?? null,
           quantity: i.quantity,
+          component_selections: i.componentSelections ?? [],
         })),
       });
       clearCart();

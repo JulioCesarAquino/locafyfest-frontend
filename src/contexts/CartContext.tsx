@@ -1,16 +1,17 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { ProductAPI, ProductVariationAPI } from '@/modules/admin/products/services';
+import type { ProductAPI, ProductVariationAPI, ComponentSelection } from '@/modules/admin/products/services';
 
 export interface CartItem {
   product: ProductAPI;
   variation?: ProductVariationAPI;
+  componentSelections?: ComponentSelection[];
   quantity: number;
 }
 
 interface CartContextData {
   items: CartItem[];
   totalItems: number;
-  addItem: (product: ProductAPI, variation?: ProductVariationAPI, qty?: number) => void;
+  addItem: (product: ProductAPI, variation?: ProductVariationAPI, qty?: number, componentSelections?: ComponentSelection[]) => void;
   updateQuantity: (index: number, qty: number) => void;
   removeItem: (index: number) => void;
   clearCart: () => void;
@@ -36,7 +37,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  function addItem(product: ProductAPI, variation?: ProductVariationAPI, qty = 1) {
+  function addItem(product: ProductAPI, variation?: ProductVariationAPI, qty = 1, componentSelections?: ComponentSelection[]) {
     setItems((prev) => {
       const idx = prev.findIndex(
         (i) => i.product.id === product.id && (i.variation?.id ?? null) === (variation?.id ?? null),
@@ -46,7 +47,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         next[idx] = { ...next[idx], quantity: next[idx].quantity + qty };
         return next;
       }
-      return [...prev, { product, variation, quantity: qty }];
+      return [...prev, { product, variation, componentSelections, quantity: qty }];
     });
   }
 
