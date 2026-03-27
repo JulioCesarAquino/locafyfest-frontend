@@ -15,7 +15,7 @@ import {
 import { Search, ShoppingCart, Package, Loader2, ImageOff, Link2, Plus, Minus, Heart } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn, storageUrl, formatCurrency } from '@/lib/utils';
-import { getProducts, type ProductAPI, type ProductVariationAPI } from '@/modules/admin/products/services';
+import { getProducts, type ProductAPI, type ProductVariationAPI, type ComponentSelection } from '@/modules/admin/products/services';
 import { useCart } from '@/contexts/CartContext';
 import { getMyFavorites, addFavorite, removeFavorite, type FavoriteAPI } from '@/modules/client/favorites/services';
 
@@ -38,9 +38,10 @@ export default function Catalog() {
   const [favMap, setFavMap] = useState<Map<number, number>>(new Map());
   const [togglingFav, setTogglingFav] = useState<number | null>(null);
 
-  // Sheet de seleção de variação
+  // Sheet de seleção de variação / componentes selecionáveis
   const [sheetProduct, setSheetProduct] = useState<ProductAPI | null>(null);
   const [selectedVariation, setSelectedVariation] = useState<ProductVariationAPI | null>(null);
+  const [componentSelections, setComponentSelections] = useState<ComponentSelection[]>([]);
   const [qty, setQty] = useState(1);
 
   useEffect(() => {
@@ -99,17 +100,38 @@ export default function Catalog() {
   function openSheet(product: ProductAPI) {
     setSheetProduct(product);
     setSelectedVariation(null);
+    setComponentSelections([]);
     setQty(1);
+  }
+
+  function selectComponentVariation(componentProductId: number, variation: ProductVariationAPI) {
+    setComponentSelections((prev) => {
+      const next = prev.filter((s) => s.component_product_id !== componentProductId);
+      return [...next, { component_product_id: componentProductId, variation_id: variation.id }];
+    });
   }
 
   function handleAddToCart() {
     if (!sheetProduct) return;
+
     const hasVariations = (sheetProduct.variations ?? []).length > 0;
     if (hasVariations && !selectedVariation) {
       toast({ title: 'Selecione uma variação', variant: 'destructive' });
       return;
     }
-    addItem(sheetProduct, selectedVariation ?? undefined, qty);
+
+    // Validar seleções de componentes selecionáveis
+    const selectableComponents = (sheetProduct.components ?? []).filter((c) => c.is_selectable_by_customer);
+    for (const comp of selectableComponents) {
+      const selected = componentSelections.find((s) => s.component_product_id === comp.component_product_id);
+      if (!selected) {
+        const name = comp.component_product?.name ?? 'componente';
+        toast({ title: `Selecione uma opção para: ${name}`, variant: 'destructive' });
+        return;
+      }
+    }
+
+    addItem(sheetProduct, selectedVariation ?? undefined, qty, componentSelections.length > 0 ? componentSelections : undefined);
     toast({ title: 'Adicionado ao pedido!', description: sheetProduct.name });
     setSheetProduct(null);
   }
@@ -305,7 +327,7 @@ export default function Catalog() {
                 )}
               </SheetHeader>
 
-              {/* Variações */}
+              {/* Variações diretas do produto */}
               {(sheetProduct.variations ?? []).length > 0 && (
                 <div className="mb-4">
                   <p className="text-xs font-medium text-muted-foreground mb-2">Variação *</p>
@@ -332,6 +354,54 @@ export default function Catalog() {
                   </div>
                 </div>
               )}
+
+              {/* Componentes selecionáveis do combo (ex: tecido do arco) */}
+              {(sheetProduct.components ?? [])
+                .filter((c) => c.is_selectable_by_customer && (c.component_product?.variations ?? []).length > 0)
+                .map((comp) => {
+                  const selectedId = componentSelections.find(
+                    (s) => s.component_product_id === comp.component_product_id,
+                  )?.variation_id;
+                  return (
+                    <div key={comp.id} className="mb-4">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        {comp.component_product?.name ?? 'Opção'} *
+                      </p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(comp.component_product?.variations ?? []).map((v) => (
+                          <button
+                            key={v.id}
+                            disabled={!v.is_available}
+                            onClick={() => selectComponentVariation(comp.component_product_id, v)}
+                            className={cn(
+                              'flex flex-col items-center gap-1 p-2 rounded-lg border text-xs transition-colors',
+                              selectedId === v.id
+                                ? 'bg-primary/10 border-primary'
+                                : 'border-border hover:border-primary',
+                              !v.is_available && 'opacity-40 cursor-not-allowed',
+                            )}
+                          >
+                            {v.image_path ? (
+                              <img
+                                src={storageUrl(v.image_path)}
+                                alt={v.name}
+                                className="w-full aspect-square object-cover rounded-md"
+                              />
+                            ) : (
+                              <div className="w-full aspect-square bg-muted rounded-md flex items-center justify-center">
+                                <ImageOff size={18} className="text-muted-foreground" />
+                              </div>
+                            )}
+                            <span className="text-center leading-tight line-clamp-2">{v.name}</span>
+                            {parseFloat(v.price_modifier) > 0 && (
+                              <span className="text-primary font-medium">+{formatCurrency(v.price_modifier)}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
 
               {/* Quantidade + Botão */}
               <div className="flex items-center justify-between gap-3">
