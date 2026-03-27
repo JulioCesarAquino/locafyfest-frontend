@@ -1,73 +1,125 @@
-# Welcome to your Lovable project
+# LocafyFest Backend
 
-## Project info
+API RESTful para plataforma de aluguel de produtos para festas e eventos.
 
-**URL**: https://lovable.dev/projects/832d12e3-67bc-456f-ad15-2766e587d24a
+---
 
-## How can I edit this code?
+## Autenticação
 
-There are several ways of editing your application.
+A API utiliza **JWT (JSON Web Tokens)**. O token deve ser enviado no header de todas as rotas protegidas:
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/832d12e3-67bc-456f-ad15-2766e587d24a) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+Authorization: Bearer {token}
 ```
 
-**Edit a file directly in GitHub**
+### Endpoints de autenticação
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/v1/auth/register` | Cadastro de novo usuário |
+| POST | `/api/v1/auth/login` | Login |
+| POST | `/api/v1/auth/verify-email` | Verificação de e-mail |
+| POST | `/api/v1/auth/forgot-password` | Solicitar recuperação de senha |
+| POST | `/api/v1/auth/reset-password` | Redefinir senha |
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Endpoints
 
-## What technologies are used for this project?
+Base URL: `/api/v1`
 
-This project is built with:
+### Públicos (sem autenticação)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/products` | Listar produtos |
+| GET | `/products/featured` | Produtos em destaque |
+| GET | `/products/popular` | Produtos mais populares |
+| GET | `/products/{id}` | Detalhe do produto |
+| GET | `/categories` | Listar categorias |
+| GET | `/addresses/search-cep/{cep}` | Buscar endereço por CEP |
+| GET | `/settings/public` | Configurações públicas |
+| GET | `/health` | Status da API |
 
-## How can I deploy this project?
+### Produtos
 
-Simply open [Lovable](https://lovable.dev/projects/832d12e3-67bc-456f-ad15-2766e587d24a) and click on Share -> Publish.
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/products` | Listar produtos |
+| GET | `/products/{id}` | Detalhe do produto |
+| GET | `/products/{id}/check-availability` | Verificar disponibilidade |
+| POST | `/products/{id}/favorites` | Favoritar produto |
+| DELETE | `/products/{id}/favorites` | Desfavoritar produto |
 
-## Can I connect a custom domain to my Lovable project?
+### Pedidos
 
-Yes, you can!
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/orders` | Listar pedidos |
+| POST | `/orders` | Criar pedido |
+| GET | `/orders/{id}` | Detalhe do pedido |
+| POST | `/orders/calculate-delivery-fee` | Calcular frete |
+| POST | `/orders/{id}/confirm` | Confirmar pedido |
+| POST | `/orders/{id}/cancel` | Cancelar pedido |
+| POST | `/orders/{id}/process-payment` | Processar pagamento |
+| GET | `/orders/my-orders` | Meus pedidos |
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Endereços
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/addresses` | Listar endereços |
+| POST | `/addresses` | Adicionar endereço |
+| PUT | `/addresses/{id}` | Atualizar endereço |
+| DELETE | `/addresses/{id}` | Remover endereço |
+| GET | `/addresses/my-addresses` | Meus endereços |
+| POST | `/addresses/{id}/set-default` | Definir endereço padrão |
+
+### Favoritos
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/favorites/my-favorites` | Meus favoritos |
+| DELETE | `/favorites/{id}` | Remover favorito |
+
+### Avaliações
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/reviews` | Listar avaliações |
+| POST | `/reviews` | Criar avaliação |
+| GET | `/reviews/my-reviews` | Minhas avaliações |
+
+### Notificações
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/notifications` | Listar notificações |
+| GET | `/notifications/unread` | Não lidas |
+| POST | `/notifications/{id}/read` | Marcar como lida |
+| POST | `/notifications/mark-all-read` | Marcar todas como lidas |
+
+### Cupons
+
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/coupons/validate` | Validar cupom |
+
+---
+
+## Perfil do usuário
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/users/{id}` | Dados do usuário |
+| PUT | `/users/{id}` | Atualizar dados |
+
+---
+
+## Papéis de acesso
+
+| Papel | Descrição |
+|---|---|
+| `client` | Usuário final da plataforma |
+| `admin` | Administrador |
+| `super_admin` | Acesso total |
