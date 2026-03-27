@@ -1,125 +1,142 @@
-# LocafyFest Backend
+# LocaFyFest — Frontend
 
-API RESTful para plataforma de aluguel de produtos para festas e eventos.
+Sistema web de gerenciamento de locação para festas e eventos. Oferece uma interface administrativa completa para gestão de produtos, clientes e pedidos, além de uma interface de catálogo para clientes realizarem pedidos.
+
+---
+
+## Tecnologias
+
+| Camada | Tecnologia |
+|---|---|
+| Framework | React 18 + Vite + TypeScript |
+| Roteamento | React Router DOM 6 |
+| Estado servidor | TanStack React Query 5 |
+| HTTP | Axios (com interceptors JWT) |
+| UI | shadcn/ui + Radix UI + Tailwind CSS |
+| Formulários | React Hook Form + Zod |
+| Gráficos | Recharts |
+| Notificações | Sonner |
+| Temas | next-themes (light/dark/system) |
+
+---
+
+## Pré-requisitos
+
+- Node.js >= 18
+- npm
+
+---
+
+## Instalação e execução
+
+```bash
+# Instalar dependências
+npm install
+
+# Iniciar servidor de desenvolvimento (localhost:8080)
+npm run dev
+
+# Build para produção
+npm run build
+
+# Pré-visualizar build de produção
+npm run preview
+
+# Lint
+npm run lint
+```
+
+---
+
+## Variáveis de ambiente
+
+Crie um arquivo `.env` na raiz do projeto:
+
+```env
+VITE_API_URL=http://localhost:8000/api/v1
+VITE_STORAGE_URL=http://localhost:8000/storage
+VITE_APP_NAME=LocaFyFest
+VITE_APP_SUBTITLE=Festas e Eventos
+```
+
+---
+
+## Estrutura do projeto
+
+```
+src/
+├── App.tsx                  # Roteamento principal e providers
+├── main.tsx                 # Entry point
+│
+├── components/
+│   ├── Layout/              # Layouts de admin e cliente
+│   ├── ProtectedRoute.tsx   # Proteção de rotas por role/permissão
+│   └── ui/                  # Componentes shadcn/ui
+│
+├── modules/
+│   ├── auth/                # Login, cadastro, verificação, recuperação de senha
+│   ├── admin/               # Dashboard, produtos, clientes, pedidos, cupons, relatórios
+│   └── client/              # Catálogo, carrinho, pedidos, favoritos, perfil
+│
+├── contexts/
+│   ├── AuthContext.tsx       # Estado de autenticação e JWT
+│   ├── CartContext.tsx       # Carrinho persistido no localStorage
+│   └── ThemeContext.tsx      # Tema light/dark/system
+│
+├── services/
+│   ├── apiClient.ts          # Instância Axios com refresh automático de token
+│   └── authService.ts        # Funções de login/logout
+│
+├── config/
+│   └── app.ts                # Configurações globais da aplicação
+│
+└── lib/
+    └── utils.ts              # Utilitários (formatação de moeda, URL de storage, resize de imagem)
+```
 
 ---
 
 ## Autenticação
 
-A API utiliza **JWT (JSON Web Tokens)**. O token deve ser enviado no header de todas as rotas protegidas:
+Baseada em JWT com persistência no `localStorage`. O fluxo é:
 
-```
-Authorization: Bearer {token}
-```
+1. Usuário faz login → `POST /auth/login`
+2. Token armazenado no `localStorage`
+3. `POST /auth/me` retorna dados do usuário e permissões
+4. Interceptor do Axios injeta `Bearer {token}` em todas as requisições
+5. Em caso de `401`, o token é renovado automaticamente via `POST /auth/refresh`
 
-### Endpoints de autenticação
+### Tipos de usuário
 
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/v1/auth/register` | Cadastro de novo usuário |
-| POST | `/api/v1/auth/login` | Login |
-| POST | `/api/v1/auth/verify-email` | Verificação de e-mail |
-| POST | `/api/v1/auth/forgot-password` | Solicitar recuperação de senha |
-| POST | `/api/v1/auth/reset-password` | Redefinir senha |
-
----
-
-## Endpoints
-
-Base URL: `/api/v1`
-
-### Públicos (sem autenticação)
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/products` | Listar produtos |
-| GET | `/products/featured` | Produtos em destaque |
-| GET | `/products/popular` | Produtos mais populares |
-| GET | `/products/{id}` | Detalhe do produto |
-| GET | `/categories` | Listar categorias |
-| GET | `/addresses/search-cep/{cep}` | Buscar endereço por CEP |
-| GET | `/settings/public` | Configurações públicas |
-| GET | `/health` | Status da API |
-
-### Produtos
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/products` | Listar produtos |
-| GET | `/products/{id}` | Detalhe do produto |
-| GET | `/products/{id}/check-availability` | Verificar disponibilidade |
-| POST | `/products/{id}/favorites` | Favoritar produto |
-| DELETE | `/products/{id}/favorites` | Desfavoritar produto |
-
-### Pedidos
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/orders` | Listar pedidos |
-| POST | `/orders` | Criar pedido |
-| GET | `/orders/{id}` | Detalhe do pedido |
-| POST | `/orders/calculate-delivery-fee` | Calcular frete |
-| POST | `/orders/{id}/confirm` | Confirmar pedido |
-| POST | `/orders/{id}/cancel` | Cancelar pedido |
-| POST | `/orders/{id}/process-payment` | Processar pagamento |
-| GET | `/orders/my-orders` | Meus pedidos |
-
-### Endereços
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/addresses` | Listar endereços |
-| POST | `/addresses` | Adicionar endereço |
-| PUT | `/addresses/{id}` | Atualizar endereço |
-| DELETE | `/addresses/{id}` | Remover endereço |
-| GET | `/addresses/my-addresses` | Meus endereços |
-| POST | `/addresses/{id}/set-default` | Definir endereço padrão |
-
-### Favoritos
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/favorites/my-favorites` | Meus favoritos |
-| DELETE | `/favorites/{id}` | Remover favorito |
-
-### Avaliações
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/reviews` | Listar avaliações |
-| POST | `/reviews` | Criar avaliação |
-| GET | `/reviews/my-reviews` | Minhas avaliações |
-
-### Notificações
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/notifications` | Listar notificações |
-| GET | `/notifications/unread` | Não lidas |
-| POST | `/notifications/{id}/read` | Marcar como lida |
-| POST | `/notifications/mark-all-read` | Marcar todas como lidas |
-
-### Cupons
-
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/coupons/validate` | Validar cupom |
-
----
-
-## Perfil do usuário
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/users/{id}` | Dados do usuário |
-| PUT | `/users/{id}` | Atualizar dados |
-
----
-
-## Papéis de acesso
-
-| Papel | Descrição |
+| Tipo | Acesso |
 |---|---|
-| `client` | Usuário final da plataforma |
-| `admin` | Administrador |
-| `super_admin` | Acesso total |
+| `super_admin` | Acesso completo |
+| `admin` | Acesso com permissões restritas |
+| `client` | Apenas área do cliente |
+
+---
+
+## Funcionalidades
+
+### Área administrativa
+- Dashboard com métricas
+- Gerenciamento de produtos (com variações, componentes e imagens)
+- Gerenciamento de clientes
+- Gerenciamento de pedidos
+- Gerenciamento de usuários administradores
+- Cupons de desconto
+- Relatórios e gráficos
+
+### Área do cliente
+- Catálogo de produtos com busca
+- Favoritos
+- Carrinho de compras (persistido no localStorage)
+- Histórico de pedidos
+- Acompanhamento de pedidos ativos
+- Edição de perfil
+
+---
+
+## Licença
+
+Projeto privado. Todos os direitos reservados.
