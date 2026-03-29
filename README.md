@@ -140,3 +140,4 @@ Baseada em JWT com persistência no `localStorage`. O fluxo é:
 ## Licença
 
 Projeto privado. Todos os direitos reservados.
+
