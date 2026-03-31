@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Moon, Sun, Settings, CheckCheck, ShoppingCart, CreditCard, Package, AlertTriangle, Info, Truck, RotateCcw, X, Trash2 } from 'lucide-react';
+import { Bell, BellOff, User, LogOut, Moon, Sun, Settings, CheckCheck, ShoppingCart, CreditCard, Package, AlertTriangle, Info, Truck, RotateCcw, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,6 +24,8 @@ import {
   deleteAllNotifications,
   type NotificationAPI,
 } from '@/services/notifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HeaderProps {
   userName: string;
@@ -65,6 +67,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
   const navigate = useNavigate();
   const { resolvedTheme, setTheme } = useTheme();
   const { userAvatarPath } = useAuth();
+  const { supported: pushSupported, permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications();
   const avatarUrl = storageUrl(userAvatarPath);
 
   const [notifications, setNotifications] = useState<NotificationAPI[]>([]);
@@ -155,6 +158,24 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
         >
           {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </Button>
+
+        {/* Push Notifications — botão para habilitar, apenas quando ainda não concedido */}
+        {pushSupported && userType === 'client' && !pushSubscribed && pushPermission !== 'denied' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="w-8 h-8 sm:w-9 sm:h-9 text-muted-foreground"
+                onClick={subscribePush}
+                disabled={pushLoading}
+              >
+                <BellOff size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Ativar notificações no celular</TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Notifications — visible on all screen sizes */}
         <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>

@@ -118,7 +118,9 @@ export default function MyOrder() {
   // Terms modal
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsText, setTermsText] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(
+    () => localStorage.getItem('locafyfest_terms_accepted') === 'true',
+  );
 
   useEffect(() => {
     if (startDate) localStorage.setItem('order_start_date', startDate);
@@ -910,7 +912,11 @@ export default function MyOrder() {
             </Button>
             <Button
               disabled={!termsAccepted || submitting}
-              onClick={() => { setShowTermsModal(false); submitOrder(); }}
+              onClick={() => {
+                localStorage.setItem('locafyfest_terms_accepted', 'true');
+                setShowTermsModal(false);
+                submitOrder();
+              }}
             >
               {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
               Confirmar e Enviar Pedido
