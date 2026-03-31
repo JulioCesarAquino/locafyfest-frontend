@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { logout } from '@/services/authService';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { storageUrl } from '@/lib/utils';
 import {
   getMyNotifications,
+  getUnreadCount,
   markAsRead,
   markAllAsRead,
   deleteNotification,
@@ -56,7 +57,7 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-const POLL_INTERVAL = 30_000; // 30s
+const POLL_INTERVAL = 5_000; // 5s — checa unread count; busca lista só quando muda
 
 export function Header({ userName, userType, companyName }: HeaderProps) {
   const navigate = useNavigate();
@@ -67,6 +68,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
 
   const [notifications, setNotifications] = useState<NotificationAPI[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const lastUnreadRef = useRef<number | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
@@ -74,15 +76,31 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
     try {
       const data = await getMyNotifications();
       setNotifications(data);
+      lastUnreadRef.current = data.filter((n) => !n.is_read).length;
     } catch {
       // silently fail — não bloquear a UI
     }
   }, []);
 
+  // Polling leve: só checa contagem; busca lista completa quando o número aumenta
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, POLL_INTERVAL);
+    const interval = setInterval(async () => {
+      try {
+        const count = await getUnreadCount();
+        if (lastUnreadRef.current === null || count > lastUnreadRef.current) {
+          await loadNotifications();
+        }
+      } catch { /* silently fail */ }
+    }, POLL_INTERVAL);
     return () => clearInterval(interval);
+  }, [loadNotifications]);
+
+  // Recarrega lista quando o Service Worker sinaliza nova notificação push
+  useEffect(() => {
+    const handler = () => loadNotifications();
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
   }, [loadNotifications]);
 
   const handleMarkRead = async (n: NotificationAPI) => {
