@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ClientLayout } from '@/components/Layout/ClientLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -97,6 +98,10 @@ function formatCep(value: string): string {
 
 export default function Profile() {
   const { updateUserName, updateUserAvatarPath, userAvatarPath } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return searchParams.get('tab') ?? 'personal';
+  });
   const [client, setClient] = useState<ProfileData>(emptyProfile);
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [savingPersonal, setSavingPersonal] = useState(false);
@@ -156,6 +161,21 @@ export default function Profile() {
     loadAddresses();
   }, []);
 
+  // Abrir aba e formulário via URL params (ex: /profile?tab=address&new=1)
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const openNew = searchParams.get('new') === '1';
+    if (tab) setActiveTab(tab);
+    if ((tab === 'address' || tab === 'addresses') && openNew) {
+      // Aguarda endereços carregarem antes de abrir o form
+      setTimeout(() => {
+        setAddressForm(emptyAddress);
+        setEditingAddressId(null);
+        setShowAddressForm(true);
+      }, 300);
+    }
+  }, [searchParams]);
+
   const handlePersonalDataChange = (field: string, value: string) =>
     setClient(prev => ({ ...prev, [field]: value }));
 
@@ -163,12 +183,10 @@ export default function Profile() {
     setAddressForm(prev => ({ ...prev, [field]: value }));
 
   const savePersonalData = async () => {
-    if (!client.id) return;
     setSavingPersonal(true);
     try {
-      await apiClient.put(`/users/${client.id}`, {
+      await apiClient.put('/me', {
         name: client.name,
-        email: client.email,
         phone: client.phone,
         birth_date: client.birthDate || undefined,
       });
@@ -442,7 +460,7 @@ export default function Profile() {
           <p className="text-muted-foreground">Gerencie suas informações pessoais e configurações</p>
         </div>
 
-        <Tabs defaultValue="personal" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 h-auto gap-1">
             <TabsTrigger value="personal" className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-2.5 text-xs sm:text-sm">
               <User size={16} className="shrink-0" />

@@ -146,7 +146,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
 
       {/* Right */}
       <div className="flex items-center space-x-2 sm:space-x-4">
-        {/* Theme Toggle */}
+        {/* Theme Toggle — desktop only */}
         <Button
           variant="outline"
           size="icon"
@@ -156,13 +156,13 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
           {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </Button>
 
-        {/* Notifications */}
+        {/* Notifications — visible on all screen sizes */}
         <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="icon"
-              className="relative w-8 h-8 sm:w-9 sm:h-9 hidden sm:flex"
+              className="relative w-8 h-8 sm:w-9 sm:h-9"
             >
               <Bell size={16} />
               {unreadCount > 0 && (
@@ -291,6 +291,13 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
                 <span>Configurações</span>
               </DropdownMenuItem>
             )}
+            {/* Tema — só aparece no mobile (sm:hidden) */}
+            <DropdownMenuItem className="sm:hidden" onClick={toggleDarkMode}>
+              {resolvedTheme === 'dark'
+                ? <Sun className="mr-2 h-4 w-4" />
+                : <Moon className="mr-2 h-4 w-4" />}
+              <span>{resolvedTheme === 'dark' ? 'Modo claro' : 'Modo escuro'}</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-danger" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />

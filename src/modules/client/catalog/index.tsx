@@ -2,6 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClientLayout } from '@/components/Layout/ClientLayout';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,17 +18,68 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Search, ShoppingCart, Package, Loader2, ImageOff, Link2, Plus, Minus, Heart } from 'lucide-react';
+import { Search, ShoppingCart, Package, Loader2, ImageOff, Link2, Plus, Minus, Heart, Eye } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn, storageUrl, formatCurrency } from '@/lib/utils';
 import { getProducts, type ProductAPI, type ProductVariationAPI, type ComponentSelection } from '@/modules/admin/products/services';
 import { useCart } from '@/contexts/CartContext';
 import { getMyFavorites, addFavorite, removeFavorite, type FavoriteAPI } from '@/modules/client/favorites/services';
 
+import type { CartItem } from '@/contexts/CartContext';
+
 function primaryImageUrl(product: ProductAPI): string {
   const images = product.images ?? [];
   const img = images.find((i) => i.is_primary) ?? images[0];
   return img ? storageUrl(img.image_path) : '';
+}
+
+interface SheetQtyRowProps {
+  sheetProduct: ProductAPI | null;
+  selectedVariation: ProductVariationAPI | null;
+  items: CartItem[];
+  qty: number;
+  setQty: React.Dispatch<React.SetStateAction<number>>;
+  onAdd: () => void;
+}
+
+function SheetQtyRow({ sheetProduct, selectedVariation, items, qty, setQty, onAdd }: SheetQtyRowProps) {
+  const maxStock = sheetProduct
+    ? (selectedVariation ? selectedVariation.quantity_available : sheetProduct.quantity_available)
+    : 1;
+  const inCart = sheetProduct
+    ? items
+        .filter((i) => i.product.id === sheetProduct.id && (i.variation?.id ?? null) === (selectedVariation?.id ?? null))
+        .reduce((s, i) => s + i.quantity, 0)
+    : 0;
+  const remaining = Math.max(0, maxStock - inCart);
+
+  return (
+    <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center gap-2 border rounded-lg px-2 py-1">
+        <button
+          onClick={() => setQty((q) => Math.max(1, q - 1))}
+          className="p-1 rounded hover:bg-muted transition-colors"
+        >
+          <Minus size={14} />
+        </button>
+        <span className="w-6 text-center text-sm font-semibold">{qty}</span>
+        <button
+          onClick={() => setQty((q) => Math.min(q + 1, remaining))}
+          disabled={qty >= remaining}
+          className="p-1 rounded hover:bg-muted transition-colors disabled:opacity-40"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+      {remaining <= 0 && (
+        <span className="text-xs text-destructive">Estoque esgotado no pedido</span>
+      )}
+      <Button size="sm" disabled={remaining <= 0} onClick={onAdd}>
+        <ShoppingCart size={14} className="mr-1.5" />
+        Adicionar ao Pedido
+      </Button>
+    </div>
+  );
 }
 
 export default function Catalog() {
@@ -43,6 +100,9 @@ export default function Catalog() {
   const [selectedVariation, setSelectedVariation] = useState<ProductVariationAPI | null>(null);
   const [componentSelections, setComponentSelections] = useState<ComponentSelection[]>([]);
   const [qty, setQty] = useState(1);
+
+  // Modal de detalhe do produto
+  const [detailProduct, setDetailProduct] = useState<ProductAPI | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -120,6 +180,23 @@ export default function Catalog() {
       return;
     }
 
+    // Verificar estoque disponível
+    const maxStock = selectedVariation
+      ? selectedVariation.quantity_available
+      : sheetProduct.quantity_available;
+
+    // Quantidade já no carrinho para este item
+    const inCart = items
+      .filter((i) => i.product.id === sheetProduct.id && (i.variation?.id ?? null) === (selectedVariation?.id ?? null))
+      .reduce((s, i) => s + i.quantity, 0);
+
+    if (inCart >= maxStock) {
+      toast({ title: 'Estoque insuficiente', description: `Você já tem ${inCart} no pedido (máximo: ${maxStock}).`, variant: 'destructive' });
+      return;
+    }
+
+    const allowedQty = Math.min(qty, maxStock - inCart);
+
     // Validar seleções de componentes selecionáveis
     const selectableComponents = (sheetProduct.components ?? []).filter((c) => c.is_selectable_by_customer);
     for (const comp of selectableComponents) {
@@ -131,7 +208,7 @@ export default function Catalog() {
       }
     }
 
-    addItem(sheetProduct, selectedVariation ?? undefined, qty, componentSelections.length > 0 ? componentSelections : undefined);
+    addItem(sheetProduct, selectedVariation ?? undefined, allowedQty, componentSelections.length > 0 ? componentSelections : undefined);
     toast({ title: 'Adicionado ao pedido!', description: sheetProduct.name });
     setSheetProduct(null);
   }
@@ -280,15 +357,25 @@ export default function Catalog() {
                         </div>
                       </div>
 
-                      <Button
-                        size="sm"
-                        disabled={unavailable}
-                        onClick={() => openSheet(product)}
-                        className="shrink-0"
-                      >
-                        <ShoppingCart size={14} className="mr-1" />
-                        Adicionar
-                      </Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="px-2"
+                          onClick={() => setDetailProduct(product)}
+                          title="Ver detalhes"
+                        >
+                          <Eye size={14} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={unavailable}
+                          onClick={() => openSheet(product)}
+                        >
+                          <ShoppingCart size={14} className="mr-1" />
+                          Adicionar
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -404,31 +491,63 @@ export default function Catalog() {
                 })}
 
               {/* Quantidade + Botão */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 border rounded-lg px-2 py-1">
-                  <button
-                    onClick={() => setQty((q) => Math.max(1, q - 1))}
-                    className="p-1 rounded hover:bg-muted transition-colors"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="w-6 text-center text-sm font-semibold">{qty}</span>
-                  <button
-                    onClick={() => setQty((q) => q + 1)}
-                    className="p-1 rounded hover:bg-muted transition-colors"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                <Button size="sm" onClick={handleAddToCart}>
-                  <ShoppingCart size={14} className="mr-1.5" />
-                  Adicionar ao Pedido
-                </Button>
-              </div>
+              <SheetQtyRow
+                sheetProduct={sheetProduct}
+                selectedVariation={selectedVariation}
+                items={items}
+                qty={qty}
+                setQty={setQty}
+                onAdd={handleAddToCart}
+              />
             </div>
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Modal de detalhe do produto */}
+      <Dialog open={!!detailProduct} onOpenChange={(open) => !open && setDetailProduct(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          {detailProduct && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{detailProduct.name}</DialogTitle>
+              </DialogHeader>
+              {/* Imagem */}
+              {(() => {
+                const images = detailProduct.images ?? [];
+                const img = images.find((i) => i.is_primary) ?? images[0];
+                return img ? (
+                  <img
+                    src={storageUrl(img.image_path)}
+                    alt={detailProduct.name}
+                    className="w-full rounded-lg object-cover max-h-64"
+                  />
+                ) : (
+                  <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center">
+                    <ImageOff size={36} className="text-muted-foreground" />
+                  </div>
+                );
+              })()}
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{detailProduct.description}</p>
+              {(detailProduct.variations ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {detailProduct.variations.map((v) => (
+                    <Badge key={v.id} variant="outline" className="text-xs">{v.name}</Badge>
+                  ))}
+                </div>
+              )}
+              <Button
+                className="w-full mt-2"
+                disabled={!detailProduct.is_available || detailProduct.quantity_available === 0}
+                onClick={() => { setDetailProduct(null); openSheet(detailProduct); }}
+              >
+                <ShoppingCart size={15} className="mr-2" />
+                Adicionar ao Pedido
+              </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </ClientLayout>
   );
 }
