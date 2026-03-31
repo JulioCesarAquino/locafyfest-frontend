@@ -268,11 +268,13 @@ export default function Products() {
       setDeleteId(null);
       await loadProducts();
     } catch (err: unknown) {
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast({
-        title: 'Erro',
-        description: err instanceof Error ? err.message : 'Erro ao excluir produto',
+        title: 'Não foi possível excluir',
+        description: apiMsg ?? (err instanceof Error ? err.message : 'Erro ao excluir produto'),
         variant: 'destructive',
       });
+      setDeleteId(null);
     }
   };
 

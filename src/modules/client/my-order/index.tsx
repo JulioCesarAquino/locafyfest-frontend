@@ -2,6 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClientLayout } from '@/components/Layout/ClientLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,10 +29,13 @@ import { validateCoupon, type ValidateCouponResponse } from '@/modules/admin/cou
 import { checkProductAvailability } from '@/modules/admin/products/services';
 import {
   getFeeSettings, getStoreLocation, haversineDistance,
+  getBusinessRules,
   type FeeSettings, type StoreLocation,
   DEFAULT_FEES, DEFAULT_STORE_LOCATION,
 } from '@/modules/admin/settings/services';
 import apiClient from '@/services/apiClient';
+
+const DEFAULT_ADVANCE_DAYS = 3;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,19 +88,37 @@ export default function MyOrder() {
     { label: 'Contato no local', text: 'Contato no local: ___ · (__)_____-____. ' },
   ];
 
-  // Dates & notes — persisted in localStorage
+  // Advance booking days from settings (default 3)
+  const [advanceDays, setAdvanceDays] = useState(DEFAULT_ADVANCE_DAYS);
+
+  // minDate = today + advanceDays
+  const minDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + advanceDays);
+    return d.toISOString().split('T')[0];
+  }, [advanceDays]);
+
   const today = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState<string>(
-    () => localStorage.getItem('order_start_date') ?? '',
+
+  const [startDate, setStartDate] = useState<string>(() => {
+    const saved = localStorage.getItem('order_start_date') ?? '';
+    return saved >= minDate ? saved : '';
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    const saved = localStorage.getItem('order_end_date') ?? '';
+    return saved >= today ? saved : '';
+  });
+  const [notes, setNotes] = useState<string>(
+    () => localStorage.getItem('order_notes') ?? '',
   );
-  const [endDate, setEndDate] = useState<string>(
-    () => {
-      const saved = localStorage.getItem('order_end_date') ?? '';
-      // descarta data de devolução que ficou no passado
-      return saved >= today ? saved : '';
-    },
-  );
-  const [notes, setNotes] = useState('');
+
+  // Has active coupons?
+  const [hasActiveCoupons, setHasActiveCoupons] = useState(false);
+
+  // Terms modal
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsText, setTermsText] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     if (startDate) localStorage.setItem('order_start_date', startDate);
@@ -100,6 +129,11 @@ export default function MyOrder() {
     if (endDate) localStorage.setItem('order_end_date', endDate);
     else localStorage.removeItem('order_end_date');
   }, [endDate]);
+
+  useEffect(() => {
+    if (notes) localStorage.setItem('order_notes', notes);
+    else localStorage.removeItem('order_notes');
+  }, [notes]);
 
   // Addresses
   const [addresses, setAddresses] = useState<AddressEntry[]>([]);
@@ -138,6 +172,14 @@ export default function MyOrder() {
 
     getFeeSettings().then(setFees).catch(() => {});
     getStoreLocation().then(setStoreLocation).catch(() => {});
+    getBusinessRules().then((rules) => {
+      const days = rules.advanceBookingDays ?? DEFAULT_ADVANCE_DAYS;
+      setAdvanceDays(days);
+      setTermsText(rules.termsAndConditions ?? '');
+    }).catch(() => {});
+    apiClient.get('/coupons/has-active')
+      .then(({ data }) => setHasActiveCoupons(data?.data?.has_active === true))
+      .catch(() => {});
   }, []);
 
   // ── Check availability for all items when dates change ───────────────────────
@@ -275,10 +317,20 @@ export default function MyOrder() {
     if (hasUnavailable) { toast.error('Remova os itens indisponíveis antes de continuar.'); return; }
     if (isOutsideRange) { toast.error(`Endereço fora do raio de entrega (${fees.deliveryMaxRadiusKm} km).`); return; }
 
+    // Verificar termos de locação no primeiro pedido
+    if (termsText && !termsAccepted) {
+      setShowTermsModal(true);
+      return;
+    }
+
+    await submitOrder();
+  }
+
+  async function submitOrder() {
     setSubmitting(true);
     try {
       await createOrder({
-        client_id: clientId,
+        client_id: clientId!,
         delivery_address_id: parseInt(selectedAddressId, 10),
         rental_start_date: startDate,
         rental_end_date: endDate,
@@ -296,6 +348,7 @@ export default function MyOrder() {
       clearCart();
       localStorage.removeItem('order_start_date');
       localStorage.removeItem('order_end_date');
+      localStorage.removeItem('order_notes');
       toast.success('Pedido enviado! Em breve entraremos em contato.');
       navigate('/history');
     } catch (err: unknown) {
@@ -487,13 +540,19 @@ export default function MyOrder() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {advanceDays > 0 && (
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      Pedidos com mínimo de <strong>{advanceDays} dia{advanceDays !== 1 ? 's' : ''}</strong> de antecedência.
+                    </p>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-sm font-medium">Data de entrega *</label>
                       <Input
                         type="date"
                         value={startDate}
-                        min={today}
+                        min={minDate}
                         onChange={(e) => {
                           setStartDate(e.target.value);
                           if (endDate && e.target.value > endDate) setEndDate('');
@@ -505,7 +564,7 @@ export default function MyOrder() {
                       <Input
                         type="date"
                         value={endDate}
-                        min={startDate || today}
+                        min={startDate || minDate}
                         onChange={(e) => setEndDate(e.target.value)}
                       />
                     </div>
@@ -570,8 +629,8 @@ export default function MyOrder() {
                 </CardContent>
               </Card>
 
-              {/* Cupom de desconto */}
-              <Card className="bg-gradient-surface border-border/50">
+              {/* Cupom de desconto — só aparece se existir cupom ativo */}
+              {hasActiveCoupons && <Card className="bg-gradient-surface border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Tag size={20} />
@@ -616,7 +675,7 @@ export default function MyOrder() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </Card>}
 
               {/* Endereço */}
               <Card className="bg-gradient-surface border-border/50">
@@ -634,7 +693,7 @@ export default function MyOrder() {
                   ) : addresses.length === 0 ? (
                     <div className="text-center py-4 space-y-3">
                       <p className="text-sm text-muted-foreground">Nenhum endereço cadastrado.</p>
-                      <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>
+                      <Button variant="outline" size="sm" onClick={() => navigate('/profile?tab=address&new=1')}>
                         Cadastrar endereço no perfil
                       </Button>
                     </div>
@@ -690,7 +749,7 @@ export default function MyOrder() {
 
                       <div
                         className="flex items-center gap-3 border border-dashed rounded-md p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => navigate('/profile')}
+                        onClick={() => navigate('/profile?tab=address&new=1')}
                       >
                         <PlusCircle className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">Adicionar novo endereço</span>
@@ -825,6 +884,40 @@ export default function MyOrder() {
           </div>
         )}
       </div>
+
+      {/* Modal de Termos de Locação */}
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Termos de Locação</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto rounded-md border p-4 text-sm whitespace-pre-wrap text-muted-foreground">
+            {termsText || 'Nenhum termo cadastrado.'}
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Checkbox
+              id="terms-check"
+              checked={termsAccepted}
+              onCheckedChange={(v) => setTermsAccepted(v === true)}
+            />
+            <label htmlFor="terms-check" className="text-sm cursor-pointer">
+              Li e aceito os termos de locação
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTermsModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!termsAccepted || submitting}
+              onClick={() => { setShowTermsModal(false); submitOrder(); }}
+            >
+              {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+              Confirmar e Enviar Pedido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ClientLayout>
   );
 }

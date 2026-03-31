@@ -37,17 +37,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
+  function stockLimit(product: ProductAPI, variation?: ProductVariationAPI): number {
+    if (variation) return variation.quantity_available;
+    return product.quantity_available;
+  }
+
   function addItem(product: ProductAPI, variation?: ProductVariationAPI, qty = 1, componentSelections?: ComponentSelection[]) {
+    const limit = stockLimit(product, variation);
     setItems((prev) => {
       const idx = prev.findIndex(
         (i) => i.product.id === product.id && (i.variation?.id ?? null) === (variation?.id ?? null),
       );
       if (idx >= 0) {
+        const newQty = Math.min(prev[idx].quantity + qty, limit);
         const next = [...prev];
-        next[idx] = { ...next[idx], quantity: next[idx].quantity + qty };
+        next[idx] = { ...next[idx], quantity: newQty };
         return next;
       }
-      return [...prev, { product, variation, componentSelections, quantity: qty }];
+      const clampedQty = Math.min(qty, limit);
+      if (clampedQty <= 0) return prev;
+      return [...prev, { product, variation, componentSelections, quantity: clampedQty }];
     });
   }
 
@@ -57,8 +66,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     setItems((prev) => {
+      const item = prev[index];
+      if (!item) return prev;
+      const limit = stockLimit(item.product, item.variation);
       const next = [...prev];
-      next[index] = { ...next[index], quantity: qty };
+      next[index] = { ...next[index], quantity: Math.min(qty, limit) };
       return next;
     });
   }
