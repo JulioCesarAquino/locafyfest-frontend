@@ -33,13 +33,8 @@ interface HeaderProps {
   companyName?: string;
 }
 
-const ORDER_NOTIFICATION_TYPES = new Set([
-  'order_confirmed', 'order_delivered', 'order_returned', 'order_cancelled',
-  'reminder_return', 'order_to_deliver', 'order_to_collect', 'order_overdue',
-  'payment_received', 'payment_failed',
-]);
-
 const TYPE_ICON: Record<string, React.ElementType> = {
+  new_order:         ShoppingCart,
   order_confirmed:   CheckCheck,
   order_delivered:   ShoppingCart,
   order_returned:    ShoppingCart,
