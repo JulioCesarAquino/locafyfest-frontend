@@ -264,7 +264,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
               variant="ghost"
               className="flex items-center space-x-2 h-8 sm:h-9 px-2 sm:px-3"
             >
-              <Avatar className="w-6 h-6 sm:w-8 sm:h-8">
+              <Avatar className="w-8 h-8 sm:w-9 sm:h-9">
                 <AvatarImage src={avatarUrl} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs sm:text-sm">
                   {userName.split(' ').map((n) => n[0]).join('').slice(0, 2)}

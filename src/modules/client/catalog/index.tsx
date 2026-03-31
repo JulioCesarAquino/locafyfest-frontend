@@ -283,7 +283,10 @@ export default function Catalog() {
                   )}
                 >
                   {/* Image */}
-                  <div className="relative aspect-video overflow-hidden rounded-t-xl bg-muted flex items-center justify-center">
+                  <div
+                    className="relative aspect-video overflow-hidden rounded-t-xl bg-muted flex items-center justify-center cursor-pointer"
+                    onClick={() => setDetailProduct(product)}
+                  >
                     {imgUrl ? (
                       <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
@@ -327,8 +330,14 @@ export default function Catalog() {
                   </div>
 
                   <CardContent className="p-4 flex flex-col flex-1">
-                    <h3 className="font-semibold text-sm leading-snug mb-1">{product.name}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                    <h3
+                      className="font-semibold text-sm leading-snug mb-1 cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => setDetailProduct(product)}
+                    >{product.name}</h3>
+                    <p
+                      className="text-xs text-muted-foreground line-clamp-2 mb-3 cursor-pointer hover:text-foreground transition-colors"
+                      onClick={() => setDetailProduct(product)}
+                    >
                       {product.description}
                     </p>
 
