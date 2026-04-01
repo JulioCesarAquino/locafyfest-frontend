@@ -28,6 +28,8 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_STORAGE_URL: ${{ secrets.VITE_STORAGE_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
+          VITE_APP_SUBTITLE: ${{ secrets.VITE_APP_SUBTITLE }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
