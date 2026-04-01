@@ -63,7 +63,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
   const navigate = useNavigate();
   const { resolvedTheme, setTheme } = useTheme();
   const { userAvatarPath } = useAuth();
-  const { supported: pushSupported, permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, subscribe: subscribePush } = usePushNotifications();
+  const { supported: pushSupported, permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications();
   const avatarUrl = storageUrl(userAvatarPath);
 
   const [notifications, setNotifications] = useState<NotificationAPI[]>([]);
@@ -333,7 +333,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
               <span>{resolvedTheme === 'dark' ? 'Modo claro' : 'Modo escuro'}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-danger" onClick={logout}>
+            <DropdownMenuItem className="text-danger" onClick={async () => { if (pushSubscribed) await unsubscribePush(); logout(); }}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sair</span>
             </DropdownMenuItem>

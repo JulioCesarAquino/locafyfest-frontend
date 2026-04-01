@@ -30,5 +30,7 @@ export function logout() {
   localStorage.removeItem("user_type");
   localStorage.removeItem("user_name");
   localStorage.removeItem("user_avatar");
+  localStorage.removeItem("user_permissions");
+  localStorage.removeItem("client_id");
   window.location.href = "/#/login";
 }

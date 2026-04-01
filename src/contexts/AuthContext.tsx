@@ -57,7 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    apiClient.get("/auth/me")
+    const controller = new AbortController();
+
+    apiClient.get("/auth/me", { signal: controller.signal })
       .then(({ data }) => {
         const perms: string[] = data.permissions ?? [];
         const type: UserType = data.user_type;
@@ -69,8 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserType(type);
         setClientId(id);
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
+      })
       .finally(() => setPermissionsLoaded(true));
+
+    return () => controller.abort();
   }, [token]);
 
   function signIn({ token: newToken, type, name, avatarPath }: SignInPayload) {

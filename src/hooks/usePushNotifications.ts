@@ -28,9 +28,15 @@ export function usePushNotifications() {
     setSupported(isSupported);
     if (isSupported) {
       setPermission(Notification.permission as PushPermission);
-      // Verificar se já está inscrito
+      // Verificar se já está inscrito e re-associar ao usuário atual no backend
       navigator.serviceWorker.ready.then((reg) =>
-        reg.pushManager.getSubscription().then((sub) => setSubscribed(!!sub)),
+        reg.pushManager.getSubscription().then((sub) => {
+          setSubscribed(!!sub);
+          if (sub) {
+            // Re-salva a subscription para garantir que está vinculada ao usuário logado
+            apiClient.post('/push-subscriptions', sub.toJSON()).catch(() => {});
+          }
+        }),
       );
     }
   }, []);
