@@ -120,7 +120,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
       if (userType === 'client') {
         navigate(`/history?order=${orderId}`);
       } else {
-        navigate('/admin/orders');
+        navigate(`/admin/orders?id=${orderId}`);
       }
     } else if (n.action_url) {
       navigate(n.action_url);
@@ -173,7 +173,7 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
         </Button>
 
         {/* Push Notifications — botão para habilitar, apenas quando ainda não concedido */}
-        {pushSupported && userType === 'client' && !pushSubscribed && pushPermission !== 'denied' && (
+        {pushSupported && !pushSubscribed && pushPermission !== 'denied' && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

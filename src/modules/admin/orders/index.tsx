@@ -351,15 +351,16 @@ export default function Orders() {
     if (activeTab !== 'list') return;
     setOrdersLoading(true);
     getOrders()
-      .then((data) => {
-        setOrders(data);
-        // Abre o painel do pedido se vier da notificação via ?order_id=
-        const orderId = searchParams.get('order_id');
-        if (orderId) openDetail(Number(orderId));
-      })
+      .then(setOrders)
       .catch(() => toast({ title: 'Erro', description: 'Não foi possível carregar os pedidos', variant: 'destructive' }))
       .finally(() => setOrdersLoading(false));
-  }, [activeTab, searchParams]);
+  }, [activeTab]);
+
+  // Abre detalhe do pedido via ?id= (ex: clique em notificação)
+  useEffect(() => {
+    const orderId = searchParams.get('id');
+    if (orderId) openDetail(Number(orderId));
+  }, [searchParams]);
 
   // ── Clients ──────────────────────────────────────────────────────────────────
   const [clients, setClients] = useState<Client[]>([]);

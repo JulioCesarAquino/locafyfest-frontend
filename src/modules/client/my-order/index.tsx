@@ -118,9 +118,7 @@ export default function MyOrder() {
   // Terms modal
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsText, setTermsText] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(
-    () => localStorage.getItem('locafyfest_terms_accepted') === 'true',
-  );
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     if (startDate) localStorage.setItem('order_start_date', startDate);
@@ -178,6 +176,10 @@ export default function MyOrder() {
       const days = rules.advanceBookingDays ?? DEFAULT_ADVANCE_DAYS;
       setAdvanceDays(days);
       setTermsText(rules.termsAndConditions ?? '');
+    }).catch(() => {});
+    apiClient.get('/user').then(({ data }) => {
+      const user = data.data ?? data;
+      if (user?.terms_accepted === true) setTermsAccepted(true);
     }).catch(() => {});
     apiClient.get('/coupons/has-active')
       .then(({ data }) => setHasActiveCoupons(data?.data?.has_active === true))
@@ -549,10 +551,11 @@ export default function MyOrder() {
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
+                    <div className="space-y-1 min-w-0">
                       <label className="text-sm font-medium">Data de entrega *</label>
                       <Input
                         type="date"
+                        className="w-full"
                         value={startDate}
                         min={minDate}
                         onChange={(e) => {
@@ -561,10 +564,11 @@ export default function MyOrder() {
                         }}
                       />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 min-w-0">
                       <label className="text-sm font-medium">Data de retirada *</label>
                       <Input
                         type="date"
+                        className="w-full"
                         value={endDate}
                         min={startDate || minDate}
                         onChange={(e) => setEndDate(e.target.value)}
@@ -913,7 +917,7 @@ export default function MyOrder() {
             <Button
               disabled={!termsAccepted || submitting}
               onClick={() => {
-                localStorage.setItem('locafyfest_terms_accepted', 'true');
+                apiClient.put('/me', { terms_accepted: true }).catch(() => {});
                 setShowTermsModal(false);
                 submitOrder();
               }}
