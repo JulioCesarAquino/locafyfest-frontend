@@ -356,8 +356,8 @@ export default function Catalog() {
                       </div>
                     )}
 
-                    <div className="mt-auto flex items-center justify-between gap-2">
-                      <div>
+                    <div className="mt-auto flex items-center justify-between gap-2 flex-wrap">
+                      <div className="min-w-0">
                         <div className="text-lg font-bold text-primary leading-none">
                           {isFinite(displayPrice) ? formatCurrency(displayPrice) : '—'}
                         </div>
