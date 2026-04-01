@@ -4,28 +4,39 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  console.log('[SW] Push recebido', event);
+
+  if (!event.data) {
+    console.warn('[SW] Push sem dados, ignorando.');
+    return;
+  }
 
   let data = {};
   try { data = event.data.json(); } catch { data = { title: 'Nova notificação', message: event.data.text() }; }
 
+  console.log('[SW] Dados do push:', data);
+
   const title = data.title ?? 'Nova notificação';
   const options = {
     body: data.message ?? '',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/logo-192.png',
+    badge: '/logo-192.png',
     tag: data.type ?? 'notification',
     data: { url: data.action_url ?? null },
     requireInteraction: false,
   };
 
   event.waitUntil(
-    self.registration.showNotification(title, options).then(() => {
-      // Avisa todas as abas abertas para recarregar as notificações
-      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-        clients.forEach((client) => client.postMessage({ type: 'NEW_NOTIFICATION' }));
-      });
-    })
+    self.registration.showNotification(title, options)
+      .then(() => {
+        console.log('[SW] Notificação exibida com sucesso');
+        return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+          clients.forEach((client) => client.postMessage({ type: 'NEW_NOTIFICATION' }));
+        });
+      })
+      .catch((err) => {
+        console.error('[SW] Erro ao exibir notificação:', err);
+      })
   );
 });
 
