@@ -2,7 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+
+function OrderRedirect() {
+  const { id } = useParams<{ id: string }>();
+  const userType = localStorage.getItem('user_type');
+  const to = userType === 'client' ? `/history?order=${id}` : `/admin/orders?id=${id}`;
+  return <Navigate to={to} replace />;
+}
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -90,6 +97,9 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/favorites" element={<Favorites />} />
             </Route>
+
+            {/* Rota de compatibilidade para notificações push com action_url /orders/:id */}
+            <Route path="/orders/:id" element={<OrderRedirect />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

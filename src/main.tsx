@@ -10,7 +10,17 @@ if ('serviceWorker' in navigator) {
   // Quando o SW pede para navegar (click em notificação push)
   navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data?.type === 'NAVIGATE' && event.data.url) {
-      window.location.hash = event.data.url;
+      const url: string = event.data.url;
+      const ordersMatch = url.match(/^\/orders\/(\d+)$/);
+      if (ordersMatch) {
+        const orderId = ordersMatch[1];
+        const userType = localStorage.getItem('user_type');
+        window.location.hash = userType === 'client'
+          ? `/history?order=${orderId}`
+          : `/admin/orders?id=${orderId}`;
+      } else {
+        window.location.hash = url;
+      }
     }
   });
 }
