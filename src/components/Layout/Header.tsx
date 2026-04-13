@@ -1,4 +1,4 @@
-import { Bell, BellOff, User, LogOut, Moon, Sun, Settings, CheckCheck, ShoppingCart, CreditCard, Package, AlertTriangle, Info, Truck, RotateCcw, X, Trash2 } from 'lucide-react';
+import { Bell, User, LogOut, Moon, Sun, Settings, CheckCheck, ShoppingCart, CreditCard, Package, AlertTriangle, Info, Truck, RotateCcw, X, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,6 +26,7 @@ import {
   type NotificationAPI,
 } from '@/services/notifications';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { PushNotificationPrompt } from '@/components/Layout/PushNotificationPrompt';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface HeaderProps {
@@ -149,7 +150,15 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 8);
 
+  const showPushPrompt = pushSupported && !pushSubscribed && pushPermission === 'default';
+
   return (
+    <>
+    <PushNotificationPrompt
+      visible={showPushPrompt}
+      loading={pushLoading}
+      onEnable={subscribePush}
+    />
     <header className="h-16 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 bg-background/80">
       {/* Left */}
       <div className="flex items-center space-x-4">
@@ -171,24 +180,6 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
         >
           {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </Button>
-
-        {/* Push Notifications — botão para habilitar, apenas quando ainda não concedido */}
-        {pushSupported && !pushSubscribed && pushPermission !== 'denied' && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="w-8 h-8 sm:w-9 sm:h-9 text-muted-foreground"
-                onClick={subscribePush}
-                disabled={pushLoading}
-              >
-                <BellOff size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Ativar notificações no celular</TooltipContent>
-          </Tooltip>
-        )}
 
         {/* Notifications — visible on all screen sizes */}
         <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
@@ -341,5 +332,6 @@ export function Header({ userName, userType, companyName }: HeaderProps) {
         </DropdownMenu>
       </div>
     </header>
+    </>
   );
 }

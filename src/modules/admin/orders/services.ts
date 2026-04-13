@@ -183,6 +183,11 @@ export const updateOrderStatus = async (id: number, status: string): Promise<Ord
   return extractOne(response.data) as OrderAPI;
 };
 
+export const forceOrderStatus = async (id: number, status: string): Promise<OrderAPI> => {
+  const response = await apiClient.post(`/orders/${id}/force-status`, { status });
+  return extractOne(response.data) as OrderAPI;
+};
+
 export const updateOrderDeliveryFee = async (id: number, deliveryFee: number): Promise<OrderAPI> => {
   const response = await apiClient.put(`/orders/${id}`, { delivery_fee: deliveryFee });
   return extractOne(response.data) as OrderAPI;
@@ -195,6 +200,11 @@ export const processPayment = async (id: number, method: string): Promise<OrderA
 
 export const applyOrderDiscount = async (id: number, data: ApplyDiscountPayload): Promise<OrderAPI> => {
   const response = await apiClient.post(`/orders/${id}/apply-discount`, data);
+  return extractOne(response.data) as OrderAPI;
+};
+
+export const updatePaymentMethod = async (id: number, paymentMethod: string): Promise<OrderAPI> => {
+  const response = await apiClient.patch(`/orders/${id}/payment-method`, { payment_method: paymentMethod });
   return extractOne(response.data) as OrderAPI;
 };
 

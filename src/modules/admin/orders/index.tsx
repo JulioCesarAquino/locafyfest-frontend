@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { AdminInvoiceSection } from './invoice-section';
 import { useSearchParams } from 'react-router-dom';
 import { APP_NAME, APP_SUBTITLE, PRINT_SHOW_LOGO } from '@/config/app';
@@ -28,7 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { type Client, type ClientAddressEntry, type ClientAddress, getClients, getClient, createClientAddress } from '@/modules/admin/clients/services';
 import { type ProductAPI, getProducts, checkProductAvailability } from '@/modules/admin/products/services';
-import { type OrderAPI, type OrderStatusAction, type ApplyDiscountPayload, getOrders, getOrder, createOrder, performOrderAction, processPayment, updateOrderDeliveryFee, applyOrderDiscount } from './services';
+import { type OrderAPI, type OrderStatusAction, type ApplyDiscountPayload, getOrders, getOrder, createOrder, performOrderAction, processPayment, updateOrderDeliveryFee, applyOrderDiscount, forceOrderStatus, updatePaymentMethod } from './services';
 import { getFeeSettings, getStoreLocation, getBusinessRules, getCompanyInfo, haversineDistance, type FeeSettings, type StoreLocation, type BusinessRulesSettings, type CompanyInfo, DEFAULT_BUSINESS_RULES } from '@/modules/admin/settings/services';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -257,6 +258,7 @@ interface OrderItem {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Orders() {
+  const { userType } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'list' | 'new'>('list');
   const [searchTerm, setSearchTerm] = useState('');
@@ -271,6 +273,7 @@ export default function Orders() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentMethodLoading, setPaymentMethodLoading] = useState(false);
 
   const openDetail = async (id: number) => {
     setDetailOpen(true);
@@ -333,6 +336,7 @@ export default function Orders() {
   const handleAction = async (action: OrderStatusAction) => {
     if (!detailOrder) return;
     setActionLoading(true);
+    const previousStatus = detailOrder.status;
     try {
       const partial = await performOrderAction(detailOrder.id, action);
       const full = await getOrder(detailOrder.id);
@@ -340,8 +344,53 @@ export default function Orders() {
       setOrders((prev) => prev.map((o) => o.id === partial.id ? { ...o, status: partial.status } : o));
       toast({ title: 'Status atualizado', description: `Pedido ${partial.order_number} atualizado com sucesso.` });
     } catch (err: unknown) {
+      // O backend pode retornar erro por falha em notificações externas (ex: WhatsApp),
+      // mas o status do pedido já pode ter sido alterado com sucesso.
+      try {
+        const full = await getOrder(detailOrder.id);
+        if (full.status !== previousStatus) {
+          setDetailOrder(full);
+          setOrders((prev) => prev.map((o) => o.id === full.id ? { ...o, status: full.status } : o));
+          toast({ title: 'Status atualizado', description: `Pedido ${full.order_number} atualizado com sucesso.` });
+          return;
+        }
+      } catch {
+        // ignora erro ao buscar pedido, exibe erro original abaixo
+      }
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       toast({ title: 'Erro', description: msg ?? 'Não foi possível atualizar o status', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdatePaymentMethod = async (method: string) => {
+    if (!detailOrder) return;
+    setPaymentMethodLoading(true);
+    try {
+      const full = await updatePaymentMethod(detailOrder.id, method);
+      setDetailOrder(full);
+      setOrders((prev) => prev.map((o) => o.id === full.id ? { ...o, payment_method: full.payment_method } : o));
+      toast({ title: 'Forma de pagamento atualizada', description: `Pedido ${full.order_number} atualizado com sucesso.` });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: 'Erro', description: msg ?? 'Não foi possível atualizar a forma de pagamento', variant: 'destructive' });
+    } finally {
+      setPaymentMethodLoading(false);
+    }
+  };
+
+  const handleForceStatus = async (status: string) => {
+    if (!detailOrder) return;
+    setActionLoading(true);
+    try {
+      const full = await forceOrderStatus(detailOrder.id, status);
+      setDetailOrder(full);
+      setOrders((prev) => prev.map((o) => o.id === full.id ? { ...o, status: full.status } : o));
+      toast({ title: 'Status corrigido', description: `Pedido ${full.order_number} atualizado para "${status}".` });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: 'Erro', description: msg ?? 'Não foi possível corrigir o status', variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -1466,10 +1515,14 @@ export default function Orders() {
               actionLoading={actionLoading}
               onAction={handleAction}
               paymentLoading={paymentLoading}
+              paymentMethodLoading={paymentMethodLoading}
               defaultDeliveryFee={fees.deliveryFee}
               onDeliveryFeeUpdate={handleDeliveryFeeUpdate}
               onPayment={handlePayment}
               onDiscount={handleDiscount}
+              userType={userType}
+              onForceStatus={handleForceStatus}
+              onUpdatePaymentMethod={handleUpdatePaymentMethod}
             />
           ) : null}
         </SheetContent>
@@ -1529,11 +1582,23 @@ interface OrderDetailPanelProps {
   actionLoading: boolean;
   onAction: (action: OrderStatusAction) => void;
   paymentLoading: boolean;
+  paymentMethodLoading: boolean;
   onPayment: (method: string) => void;
   defaultDeliveryFee: number;
   onDeliveryFeeUpdate: (fee: number) => Promise<void>;
   onDiscount: (payload: ApplyDiscountPayload) => Promise<void>;
+  userType: string | null;
+  onForceStatus: (status: string) => Promise<void>;
+  onUpdatePaymentMethod: (method: string) => Promise<void>;
 }
+
+const FORCE_STATUS_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  pending:   [{ value: 'confirmed', label: 'Confirmado' }, { value: 'cancelled', label: 'Cancelado' }],
+  confirmed: [{ value: 'delivered', label: 'Entregue' }, { value: 'cancelled', label: 'Cancelado' }],
+  delivered: [{ value: 'confirmed', label: 'Confirmado' }, { value: 'returned', label: 'Concluído' }, { value: 'cancelled', label: 'Cancelado' }],
+  returned:  [{ value: 'delivered', label: 'Entregue' }, { value: 'cancelled', label: 'Cancelado' }],
+  cancelled: [{ value: 'confirmed', label: 'Confirmado' }, { value: 'delivered', label: 'Entregue' }, { value: 'returned', label: 'Concluído' }],
+};
 
 const STATUS_ACTIONS: Record<string, { action: OrderStatusAction; label: string; icon: React.ReactNode; variant: 'default' | 'destructive' | 'outline' | 'secondary' }[]> = {
   pending: [
@@ -1743,7 +1808,7 @@ function printOrder(order: OrderAPI, company?: CompanyInfo) {
   win.print();
 }
 
-function OrderDetailPanel({ order, actionLoading, onAction, paymentLoading, onPayment, defaultDeliveryFee, onDeliveryFeeUpdate, onDiscount }: OrderDetailPanelProps) {
+function OrderDetailPanel({ order, actionLoading, onAction, paymentLoading, paymentMethodLoading, onPayment, defaultDeliveryFee, onDeliveryFeeUpdate, onDiscount, userType, onForceStatus, onUpdatePaymentMethod }: OrderDetailPanelProps) {
   const [paymentMethod, setPaymentMethod] = useState('pix');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [deliveryFeeLoading, setDeliveryFeeLoading] = useState(false);
@@ -1751,6 +1816,9 @@ function OrderDetailPanel({ order, actionLoading, onAction, paymentLoading, onPa
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('fixed');
   const [discountValue, setDiscountValue] = useState('');
   const [discountLoading, setDiscountLoading] = useState(false);
+  const [forceStatusValue, setForceStatusValue] = useState('');
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState(false);
+  const [newPaymentMethod, setNewPaymentMethod] = useState(order.payment_method ?? 'pix');
 
   const canApplyDiscount = !['returned', 'cancelled'].includes(order.status);
 
@@ -1839,6 +1907,44 @@ function OrderDetailPanel({ order, actionLoading, onAction, paymentLoading, onPa
           </div>
         </div>
       )}
+
+      {/* Correção manual de status — admin/super_admin */}
+      {(userType === 'admin' || userType === 'super_admin') && (() => {
+        const options = FORCE_STATUS_OPTIONS[order.status] ?? [];
+        if (options.length === 0) return null;
+        return (
+          <div className="space-y-2 rounded-md border border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3">
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Correção de Status
+            </p>
+            <p className="text-xs text-muted-foreground">Ajuste manual sem envio de notificações. Use apenas para corrigir erros.</p>
+            <div className="flex gap-2">
+              <Select value={forceStatusValue} onValueChange={setForceStatusValue}>
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue placeholder="Selecionar status..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                disabled={!forceStatusValue || actionLoading}
+                onClick={() => { onForceStatus(forceStatusValue); setForceStatusValue(''); }}
+              >
+                {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Aplicar'}
+              </Button>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="h-px bg-border" />
 
@@ -2053,10 +2159,56 @@ function OrderDetailPanel({ order, actionLoading, onAction, paymentLoading, onPa
             {paymentCfg?.label ?? order.payment_status}
           </Badge>
         </div>
-        {order.payment_method && (
-          <p className="text-sm text-muted-foreground">
-            Método: {paymentMethodOptions.find(m => m.value === order.payment_method)?.label ?? order.payment_method}
-          </p>
+        {!editingPaymentMethod && (
+          <div className="flex items-center justify-between gap-2 min-h-[1.5rem]">
+            {order.payment_method ? (
+              <p className="text-sm text-muted-foreground">
+                Método: {paymentMethodOptions.find(m => m.value === order.payment_method)?.label ?? order.payment_method}
+              </p>
+            ) : <span />}
+            {userType === 'super_admin' && (
+              <button
+                onClick={() => { setNewPaymentMethod(order.payment_method ?? 'pix'); setEditingPaymentMethod(true); }}
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0"
+              >
+                {order.payment_method ? 'Editar' : 'Definir método'}
+              </button>
+            )}
+          </div>
+        )}
+        {editingPaymentMethod && (
+          <div className="space-y-2 p-3 rounded-md border bg-muted/30">
+            <p className="text-xs font-medium">Alterar forma de pagamento</p>
+            <Select value={newPaymentMethod} onValueChange={setNewPaymentMethod}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-background border-border z-50">
+                {paymentMethodOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="flex-1 h-7 text-xs"
+                disabled={paymentMethodLoading}
+                onClick={async () => { await onUpdatePaymentMethod(newPaymentMethod); setEditingPaymentMethod(false); }}
+              >
+                {paymentMethodLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Salvar'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                disabled={paymentMethodLoading}
+                onClick={() => setEditingPaymentMethod(false)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
         )}
         {!isPaid && order.status !== 'cancelled' && (
           <>
