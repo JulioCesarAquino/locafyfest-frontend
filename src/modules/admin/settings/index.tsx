@@ -9,15 +9,22 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Clock, FileText, Calculator, Upload, Navigation, Loader2, MapPin } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Building2, Clock, FileText, Calculator, Upload, Navigation, Loader2, MapPin, Ban, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import {
   getFeeSettings, saveFeeSettings,
   getCompanyInfo, saveCompanyInfo,
   getWorkingHours, saveWorkingHours,
   getBusinessRules, saveBusinessRules,
-  DEFAULT_COMPANY, DEFAULT_WORKING_HOURS, DEFAULT_BUSINESS_RULES, DEFAULT_FEES,
-  type CompanyInfo, type WorkingHoursSettings, type BusinessRulesSettings, type FeeSettings,
+  getOrderBlockingSettings, saveOrderBlockingSettings, isOrdersCurrentlyBlocked,
+  DEFAULT_COMPANY, DEFAULT_WORKING_HOURS, DEFAULT_BUSINESS_RULES, DEFAULT_FEES, DEFAULT_ORDER_BLOCKING,
+  type CompanyInfo, type WorkingHoursSettings, type BusinessRulesSettings, type FeeSettings, type OrderBlockingSettings,
 } from './services';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -63,6 +70,7 @@ export default function Settings() {
   const [workingHours, setWorkingHours] = useState<WorkingHoursSettings>(structuredClone(DEFAULT_WORKING_HOURS));
   const [businessRules, setBusinessRules] = useState<BusinessRulesSettings>({ ...DEFAULT_BUSINESS_RULES });
   const [fees, setFees] = useState<FeeSettings>({ ...DEFAULT_FEES });
+  const [blocking, setBlocking] = useState<OrderBlockingSettings>({ ...DEFAULT_ORDER_BLOCKING });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,16 +81,18 @@ export default function Settings() {
     async function load() {
       setLoading(true);
       try {
-        const [c, wh, br, f] = await Promise.all([
+        const [c, wh, br, f, b] = await Promise.all([
           getCompanyInfo(),
           getWorkingHours(),
           getBusinessRules(),
           getFeeSettings(),
+          getOrderBlockingSettings(),
         ]);
         setCompany(c);
         setWorkingHours(wh);
         setBusinessRules(br);
         setFees(f);
+        setBlocking(b);
       } catch {
         toast({ title: 'Erro ao carregar configurações', variant: 'destructive' });
       } finally {
@@ -244,6 +254,21 @@ export default function Settings() {
     }
   };
 
+  // ─── Blocking ─────────────────────────────────────────────────────────────
+
+  const handleSaveBlocking = async () => {
+    setSaving(true);
+    try {
+      await saveOrderBlockingSettings(blocking);
+      toast({ title: 'Configuração salva', description: 'Bloqueio de pedidos atualizado.' });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast({ title: 'Erro ao salvar', description: msg ?? 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -265,22 +290,26 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="company" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="company" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
-              Empresa
+              <span className="hidden sm:inline">Empresa</span>
             </TabsTrigger>
             <TabsTrigger value="hours" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Horários
+              <span className="hidden sm:inline">Horários</span>
             </TabsTrigger>
             <TabsTrigger value="rules" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Políticas
+              <span className="hidden sm:inline">Políticas</span>
             </TabsTrigger>
             <TabsTrigger value="fees" className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
-              Taxas
+              <span className="hidden sm:inline">Taxas</span>
+            </TabsTrigger>
+            <TabsTrigger value="blocking" className="flex items-center gap-2">
+              <Ban className="h-4 w-4" />
+              <span className="hidden sm:inline">Bloqueio</span>
             </TabsTrigger>
           </TabsList>
 
@@ -739,6 +768,163 @@ export default function Settings() {
               </CardContent>
             </Card>
           </TabsContent>
+          {/* ── Bloqueio ── */}
+          <TabsContent value="blocking">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bloqueio de Pedidos</CardTitle>
+                <CardDescription>
+                  Suspenda temporariamente novos pedidos com uma mensagem explicativa para o cliente
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+
+                {/* Toggle principal */}
+                <div className={cn(
+                  'flex items-center justify-between p-4 border rounded-lg',
+                  isOrdersCurrentlyBlocked(blocking) ? 'border-destructive bg-destructive/5' : 'border-border',
+                )}>
+                  <div>
+                    <p className="font-medium">Suspender novos pedidos</p>
+                    <p className="text-sm text-muted-foreground">
+                      {isOrdersCurrentlyBlocked(blocking)
+                        ? 'Clientes não conseguem finalizar pedidos no momento'
+                        : blocking.enabled && blocking.type === 'date_range'
+                          ? 'Configurado, mas fora do intervalo de datas — pedidos aceitos normalmente'
+                          : 'Pedidos estão sendo aceitos normalmente'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={blocking.enabled}
+                    onCheckedChange={(checked) => setBlocking(prev => ({ ...prev, enabled: checked }))}
+                  />
+                </div>
+
+                {/* Tipo de bloqueio */}
+                <div className="space-y-3">
+                  <Label>Tipo de bloqueio</Label>
+                  <RadioGroup
+                    value={blocking.type}
+                    onValueChange={(v) => setBlocking(prev => ({ ...prev, type: v as OrderBlockingSettings['type'] }))}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer">
+                      <RadioGroupItem value="indefinite" id="b-indefinite" className="mt-0.5" />
+                      <Label htmlFor="b-indefinite" className="cursor-pointer space-y-0.5">
+                        <span className="font-medium">Tempo indeterminado</span>
+                        <p className="text-sm text-muted-foreground font-normal">Ativo até ser desligado manualmente</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer">
+                      <RadioGroupItem value="today" id="b-today" className="mt-0.5" />
+                      <Label htmlFor="b-today" className="cursor-pointer space-y-0.5">
+                        <span className="font-medium">Somente hoje</span>
+                        <p className="text-sm text-muted-foreground font-normal">Para imprevistos pontuais — desative manualmente ao retornar</p>
+                      </Label>
+                    </div>
+                    <div className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer">
+                      <RadioGroupItem value="date_range" id="b-range" className="mt-0.5" />
+                      <Label htmlFor="b-range" className="cursor-pointer space-y-0.5">
+                        <span className="font-medium">Intervalo de datas</span>
+                        <p className="text-sm text-muted-foreground font-normal">Feriados, férias coletivas ou eventos programados</p>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Intervalo de datas */}
+                {blocking.type === 'date_range' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-2">
+                      <Label>Data de início</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn('w-full justify-start text-left font-normal', !blocking.startDate && 'text-muted-foreground')}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {blocking.startDate
+                              ? format(new Date(blocking.startDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                              : 'Selecione'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-background border-border z-50" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={blocking.startDate ? new Date(blocking.startDate + 'T00:00:00') : undefined}
+                            onSelect={(date) => {
+                              const val = date ? format(date, 'yyyy-MM-dd') : '';
+                              setBlocking(prev => ({
+                                ...prev,
+                                startDate: val,
+                                endDate: prev.endDate && val > prev.endDate ? '' : prev.endDate,
+                              }));
+                            }}
+                            locale={ptBR}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data de fim</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn('w-full justify-start text-left font-normal', !blocking.endDate && 'text-muted-foreground')}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {blocking.endDate
+                              ? format(new Date(blocking.endDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })
+                              : 'Selecione'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-background border-border z-50" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={blocking.endDate ? new Date(blocking.endDate + 'T00:00:00') : undefined}
+                            onSelect={(date) => setBlocking(prev => ({ ...prev, endDate: date ? format(date, 'yyyy-MM-dd') : '' }))}
+                            disabled={(date) => {
+                              if (!blocking.startDate) return false;
+                              const min = new Date(blocking.startDate + 'T00:00:00');
+                              min.setHours(0, 0, 0, 0);
+                              date.setHours(0, 0, 0, 0);
+                              return date < min;
+                            }}
+                            locale={ptBR}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mensagem para o cliente */}
+                <div className="space-y-2">
+                  <Label htmlFor="blocking-message">Mensagem exibida ao cliente</Label>
+                  <Textarea
+                    id="blocking-message"
+                    placeholder="Ex: Estamos em manutenção e voltamos na segunda-feira. Obrigado pela compreensão!"
+                    value={blocking.message}
+                    onChange={(e) => setBlocking(prev => ({ ...prev, message: e.target.value }))}
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Esta mensagem aparece no checkout enquanto o bloqueio estiver ativo.
+                  </p>
+                </div>
+
+                <Button onClick={handleSaveBlocking} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Salvar Configuração
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
     </AppLayout>

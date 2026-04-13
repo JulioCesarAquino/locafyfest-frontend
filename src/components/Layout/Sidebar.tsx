@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,13 +11,15 @@ import {
   X,
   Calendar,
   UserCheck,
-  Tag
+  Tag,
+  Ban,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { APP_NAME } from '@/config/app';
 import { AbceLogo } from '@/components/AbceLogo';
 import { useAuth } from '@/contexts/AuthContext';
+import { getOrderBlockingSettings, isOrdersCurrentlyBlocked } from '@/modules/admin/settings/services';
 
 interface SidebarProps {
   userType: 'admin' | 'client';
@@ -43,8 +45,16 @@ const clientMenuItems = [
 
 export function Sidebar({ userType }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [ordersBlocked, setOrdersBlocked] = useState(false);
   const location = useLocation();
   const { permissions, userType: authUserType } = useAuth();
+
+  useEffect(() => {
+    if (userType !== 'admin') return;
+    getOrderBlockingSettings()
+      .then((s) => setOrdersBlocked(isOrdersCurrentlyBlocked(s)))
+      .catch(() => {});
+  }, [userType]);
 
   const menuItems = userType === 'admin'
     ? adminMenuItems.filter(item =>
@@ -97,6 +107,16 @@ export function Sidebar({ userType }: SidebarProps) {
             </Link>
           </div>
 
+          {/* Aviso de bloqueio — visível a todos os admins */}
+          {userType === 'admin' && ordersBlocked && (
+            <div className="mx-4 mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 flex gap-2">
+              <Ban size={15} className="text-destructive shrink-0 mt-0.5" />
+              <p className="text-xs font-medium text-destructive leading-snug">
+                Pedidos suspensos no momento
+              </p>
+            </div>
+          )}
+
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">
             {menuItems.map((item) => {
@@ -113,14 +133,17 @@ export function Sidebar({ userType }: SidebarProps) {
                       : "text-muted-foreground hover:bg-surface hover:text-foreground"
                   )}
                 >
-                  <item.icon 
-                    size={20} 
+                  <item.icon
+                    size={20}
                     className={cn(
                       "transition-colors duration-300",
                       isActive ? "text-primary-foreground" : "group-hover:text-foreground"
                     )}
                   />
                   <span className="font-medium">{item.label}</span>
+                  {ordersBlocked && item.href === '/admin/settings' && (
+                    <span className="ml-auto h-2 w-2 rounded-full bg-destructive shrink-0" />
+                  )}
                 </Link>
               );
             })}

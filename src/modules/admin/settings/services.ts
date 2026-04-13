@@ -60,6 +60,14 @@ export interface FeeSettings {
   deliveryMaxRadiusKm: number;
 }
 
+export interface OrderBlockingSettings {
+  enabled: boolean;
+  type: 'indefinite' | 'today' | 'date_range';
+  startDate: string;
+  endDate: string;
+  message: string;
+}
+
 export interface StoreLocation {
   latitude: number | null;
   longitude: number | null;
@@ -93,6 +101,14 @@ export const DEFAULT_FEES: FeeSettings = {
 };
 
 export const DEFAULT_STORE_LOCATION: StoreLocation = { latitude: null, longitude: null };
+
+export const DEFAULT_ORDER_BLOCKING: OrderBlockingSettings = {
+  enabled: false,
+  type: 'indefinite',
+  startDate: '',
+  endDate: '',
+  message: 'Pedidos temporariamente suspensos. Em breve voltaremos ao normal.',
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -198,6 +214,35 @@ export async function saveStoreLocation(location: StoreLocation): Promise<void> 
   await bulkUpsert({
     store_location: { value: location, data_type: 'json', group: 'company' },
   });
+}
+
+// ─── Order Blocking ───────────────────────────────────────────────────────────
+
+export async function getOrderBlockingSettings(): Promise<OrderBlockingSettings> {
+  const map = await fetchAllSettings();
+  return parseJson<OrderBlockingSettings>(map['order_blocking'], DEFAULT_ORDER_BLOCKING);
+}
+
+export async function saveOrderBlockingSettings(blocking: OrderBlockingSettings): Promise<void> {
+  await bulkUpsert({
+    order_blocking: { value: blocking, data_type: 'json', group: 'orders' },
+  });
+}
+
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function isOrdersCurrentlyBlocked(settings: OrderBlockingSettings): boolean {
+  if (!settings.enabled) return false;
+  if (settings.type === 'indefinite' || settings.type === 'today') return true;
+  if (settings.type === 'date_range') {
+    const today = localToday();
+    return !!settings.startDate && !!settings.endDate
+      && today >= settings.startDate && today <= settings.endDate;
+  }
+  return false;
 }
 
 // ─── Haversine ────────────────────────────────────────────────────────────────

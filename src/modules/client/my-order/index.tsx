@@ -12,6 +12,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -19,7 +23,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import {
   Plus, Minus, Trash2, Package, Loader2, ShoppingCart, MapPin, CalendarIcon,
   Star, PlusCircle, CheckCircle2, AlertTriangle, XCircle, Truck, Wrench, Tag,
-  MessageSquare,
+  MessageSquare, Ban,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCart, type CartItem } from '@/contexts/CartContext';
@@ -29,9 +33,9 @@ import { validateCoupon, type ValidateCouponResponse } from '@/modules/admin/cou
 import { checkProductAvailability } from '@/modules/admin/products/services';
 import {
   getFeeSettings, getStoreLocation, haversineDistance,
-  getBusinessRules,
-  type FeeSettings, type StoreLocation,
-  DEFAULT_FEES, DEFAULT_STORE_LOCATION,
+  getBusinessRules, getOrderBlockingSettings, isOrdersCurrentlyBlocked,
+  type FeeSettings, type StoreLocation, type OrderBlockingSettings,
+  DEFAULT_FEES, DEFAULT_STORE_LOCATION, DEFAULT_ORDER_BLOCKING,
 } from '@/modules/admin/settings/services';
 import apiClient from '@/services/apiClient';
 
@@ -91,14 +95,17 @@ export default function MyOrder() {
   // Advance booking days from settings (default 3)
   const [advanceDays, setAdvanceDays] = useState(DEFAULT_ADVANCE_DAYS);
 
-  // minDate = today + advanceDays
+  // minDate = today + advanceDays (using local date to avoid UTC-offset issues)
   const minDate = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + advanceDays);
-    return d.toISOString().split('T')[0];
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, [advanceDays]);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   const [startDate, setStartDate] = useState<string>(() => {
     const saved = localStorage.getItem('order_start_date') ?? '';
@@ -153,6 +160,9 @@ export default function MyOrder() {
   const [couponData, setCouponData] = useState<ValidateCouponResponse | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
 
+  // Order blocking
+  const [orderBlocking, setOrderBlocking] = useState<OrderBlockingSettings>(DEFAULT_ORDER_BLOCKING);
+
   // Submission
   const [submitting, setSubmitting] = useState(false);
 
@@ -172,6 +182,7 @@ export default function MyOrder() {
 
     getFeeSettings().then(setFees).catch(() => {});
     getStoreLocation().then(setStoreLocation).catch(() => {});
+    getOrderBlockingSettings().then(setOrderBlocking).catch(() => {});
     getBusinessRules().then((rules) => {
       const days = rules.advanceBookingDays ?? DEFAULT_ADVANCE_DAYS;
       setAdvanceDays(days);
@@ -314,6 +325,7 @@ export default function MyOrder() {
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   async function handleSubmit() {
+    if (isOrdersCurrentlyBlocked(orderBlocking)) { toast.error('Pedidos suspensos no momento. Tente novamente mais tarde.'); return; }
     if (items.length === 0) { toast.error('Adicione pelo menos um produto.'); return; }
     if (!datesSet) { toast.error('Informe as datas de locação.'); return; }
     if (!selectedAddressId) { toast.error('Selecione um endereço de entrega.'); return; }
@@ -382,6 +394,18 @@ export default function MyOrder() {
           <h1 className="text-3xl font-bold text-gradient-primary">Meu Pedido</h1>
           <p className="text-muted-foreground">Revise os itens e informe os dados da locação</p>
         </div>
+
+        {isOrdersCurrentlyBlocked(orderBlocking) && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 flex gap-3">
+            <Ban size={20} className="text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-destructive">Pedidos temporariamente suspensos</p>
+              {orderBlocking.message && (
+                <p className="text-sm text-destructive/80">{orderBlocking.message}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {items.length === 0 ? (
           <Card className="bg-gradient-surface border-border/50">
@@ -553,26 +577,65 @@ export default function MyOrder() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1 min-w-0">
                       <label className="text-sm font-medium">Data de entrega *</label>
-                      <Input
-                        type="date"
-                        className="w-full"
-                        value={startDate}
-                        min={minDate}
-                        onChange={(e) => {
-                          setStartDate(e.target.value);
-                          if (endDate && e.target.value > endDate) setEndDate('');
-                        }}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn('w-full justify-start text-left font-normal', !startDate && 'text-muted-foreground')}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {startDate ? format(new Date(startDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-background border-border z-50" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={startDate ? new Date(startDate + 'T00:00:00') : undefined}
+                            onSelect={(date) => {
+                              const val = date ? format(date, 'yyyy-MM-dd') : '';
+                              setStartDate(val);
+                              if (endDate && val > endDate) setEndDate('');
+                            }}
+                            disabled={(date) => {
+                              const min = new Date(minDate + 'T00:00:00');
+                              min.setHours(0, 0, 0, 0);
+                              date.setHours(0, 0, 0, 0);
+                              return date < min;
+                            }}
+                            locale={ptBR}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="space-y-1 min-w-0">
                       <label className="text-sm font-medium">Data de retirada *</label>
-                      <Input
-                        type="date"
-                        className="w-full"
-                        value={endDate}
-                        min={startDate || minDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn('w-full justify-start text-left font-normal', !endDate && 'text-muted-foreground')}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {endDate ? format(new Date(endDate + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-background border-border z-50" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={endDate ? new Date(endDate + 'T00:00:00') : undefined}
+                            onSelect={(date) => setEndDate(date ? format(date, 'yyyy-MM-dd') : '')}
+                            disabled={(date) => {
+                              const min = new Date((startDate || minDate) + 'T00:00:00');
+                              min.setHours(0, 0, 0, 0);
+                              date.setHours(0, 0, 0, 0);
+                              return date < min;
+                            }}
+                            locale={ptBR}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
 
@@ -876,7 +939,7 @@ export default function MyOrder() {
 
                   <Button
                     className="w-full" size="lg"
-                    disabled={submitting || items.length === 0 || hasUnavailable || isOutsideRange}
+                    disabled={submitting || items.length === 0 || hasUnavailable || isOutsideRange || isOrdersCurrentlyBlocked(orderBlocking)}
                     onClick={handleSubmit}
                   >
                     {submitting
