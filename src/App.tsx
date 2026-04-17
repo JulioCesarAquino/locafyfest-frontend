@@ -33,6 +33,7 @@ import History from "./modules/client/history";
 import Profile from "./modules/client/profile";
 import Favorites from "./modules/client/favorites";
 import NotFound from "./pages/NotFound";
+import PublicCatalog from "./modules/public/catalog";
 
 const queryClient = new QueryClient();
 
@@ -52,8 +53,8 @@ const App = () => (
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* Rota raiz redireciona para login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            {/* Rota raiz — catálogo público */}
+            <Route path="/" element={<PublicCatalog />} />
 
             {/* Rotas protegidas — admin e super_admin */}
             <Route element={<ProtectedRoute allowedRoles={["admin", "super_admin"]} />}>
