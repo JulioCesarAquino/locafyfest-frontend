@@ -12,6 +12,7 @@ function OrderRedirect() {
 }
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { GuestCartProvider } from "@/contexts/GuestCartContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./modules/admin/dashboard";
@@ -45,6 +46,7 @@ const App = () => (
       <Sonner />
       <HashRouter>
         <AuthProvider>
+          <GuestCartProvider>
           <CartProvider>
           <Routes>
             {/* Rotas públicas */}
@@ -105,6 +107,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
           </CartProvider>
+          </GuestCartProvider>
         </AuthProvider>
       </HashRouter>
     </TooltipProvider>

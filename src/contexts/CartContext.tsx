@@ -15,6 +15,7 @@ interface CartContextData {
   updateQuantity: (index: number, qty: number) => void;
   removeItem: (index: number) => void;
   clearCart: () => void;
+  mergeItems: (incoming: CartItem[]) => void;
 }
 
 const CartContext = createContext<CartContextData>({} as CartContextData);
@@ -83,10 +84,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([]);
   }
 
+  function mergeItems(incoming: CartItem[]) {
+    setItems((prev) => {
+      let next = [...prev];
+      for (const inc of incoming) {
+        const idx = next.findIndex(
+          (i) => i.product.id === inc.product.id && (i.variation?.id ?? null) === (inc.variation?.id ?? null),
+        );
+        if (idx >= 0) {
+          const limit = stockLimit(next[idx].product, next[idx].variation);
+          next[idx] = { ...next[idx], quantity: Math.min(next[idx].quantity + inc.quantity, limit) };
+        } else {
+          next = [...next, inc];
+        }
+      }
+      return next;
+    });
+  }
+
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, totalItems, addItem, updateQuantity, removeItem, clearCart }}>
+    <CartContext.Provider value={{ items, totalItems, addItem, updateQuantity, removeItem, clearCart, mergeItems }}>
       {children}
     </CartContext.Provider>
   );

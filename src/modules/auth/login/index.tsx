@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle2, ShoppingCart } from 'lucide-react';
 import { AbceLogo } from '@/components/AbceLogo';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { login } from "@/services/authService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGuestCart } from "@/contexts/GuestCartContext";
+import { useCart } from "@/contexts/CartContext";
 import { APP_NAME, APP_SUBTITLE } from "@/config/app";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
+  const { guestItems, clearGuestCart } = useGuestCart();
+  const { mergeItems } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as { verified?: boolean; email?: string; password?: string } | null;
@@ -31,7 +35,18 @@ export default function Login() {
       const payload = await login({ email, password });
       signIn(payload);
       const isAdmin = payload.type === "admin" || payload.type === "super_admin";
-      navigate(isAdmin ? "/admin/dashboard" : "/catalog", { replace: true });
+      const hasGuestItems = guestItems.length > 0;
+      if (!isAdmin && hasGuestItems) {
+        mergeItems(guestItems);
+        clearGuestCart();
+      }
+      if (isAdmin) {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (hasGuestItems) {
+        navigate("/my-order", { replace: true });
+      } else {
+        navigate("/catalog", { replace: true });
+      }
     } catch (err: unknown) {
       type ApiError = { response?: { status?: number; data?: { email_verified?: boolean; email?: string; message?: string } } };
       const { response } = err as ApiError;
@@ -74,6 +89,14 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {guestItems.length > 0 && (
+              <div className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-2 text-sm text-primary mb-4">
+                <ShoppingCart className="h-4 w-4 shrink-0" />
+                <span>
+                  Você tem <strong>{guestItems.length} {guestItems.length === 1 ? 'item' : 'itens'}</strong> salvos no orçamento. Entre para finalizar.
+                </span>
+              </div>
+            )}
             {verified && (
               <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-600 mb-4">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />

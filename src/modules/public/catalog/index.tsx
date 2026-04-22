@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { PublicLayout } from '@/components/Layout/PublicLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -11,11 +11,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, ShoppingCart, Package, Loader2, ImageOff, Link2, Eye } from 'lucide-react';
+import { Search, ShoppingCart, Package, Loader2, ImageOff, Link2, Eye, Plus, Minus, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn, storageUrl, formatCurrency } from '@/lib/utils';
 import { getProducts, type ProductAPI, type ProductVariationAPI } from '@/modules/admin/products/services';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGuestCart } from '@/contexts/GuestCartContext';
+import { PublicCartDrawer } from './components/PublicCartDrawer';
 
 function primaryImageUrl(product: ProductAPI): string {
   const images = product.images ?? [];
@@ -31,13 +33,16 @@ function homeFor(userType: string | null): string {
 
 export default function PublicCatalog() {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const { isAuthenticated, userType } = useAuth();
+  const { guestItems, addGuestItem } = useGuestCart();
 
   const [products, setProducts] = useState<ProductAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+
   const [detailProduct, setDetailProduct] = useState<ProductAPI | null>(null);
+  const [selectedVariation, setSelectedVariation] = useState<ProductVariationAPI | null>(null);
+  const [addQty, setAddQty] = useState(1);
 
   useEffect(() => {
     if (isAuthenticated) return;
@@ -70,6 +75,43 @@ export default function PublicCatalog() {
   if (isAuthenticated) {
     return <Navigate to={homeFor(userType)} replace />;
   }
+
+  function openDetail(product: ProductAPI) {
+    setDetailProduct(product);
+    setSelectedVariation(null);
+    setAddQty(1);
+  }
+
+  function handleAddDirect(product: ProductAPI) {
+    addGuestItem(product, undefined, 1);
+    toast({ title: 'Adicionado ao orçamento!', description: product.name });
+  }
+
+  function handleAddFromModal() {
+    if (!detailProduct) return;
+    const hasVariations = (detailProduct.variations ?? []).filter((v) => v.is_available).length > 0;
+    if (hasVariations && !selectedVariation) {
+      toast({ title: 'Selecione uma variação', variant: 'destructive' });
+      return;
+    }
+    addGuestItem(detailProduct, selectedVariation ?? undefined, addQty);
+    toast({ title: 'Adicionado ao orçamento!', description: detailProduct.name });
+    setDetailProduct(null);
+  }
+
+  function guestQtyForProduct(productId: number): number {
+    return guestItems
+      .filter((i) => i.product.id === productId)
+      .reduce((s, i) => s + i.quantity, 0);
+  }
+
+  const modalVariations = (detailProduct?.variations ?? []).filter((v) => v.is_available);
+  const modalUnavailable =
+    !detailProduct?.is_available || detailProduct?.quantity_available === 0;
+
+  const selectedLimit = selectedVariation
+    ? selectedVariation.quantity_available
+    : detailProduct?.quantity_available ?? 1;
 
   return (
     <PublicLayout>
@@ -110,6 +152,7 @@ export default function PublicCatalog() {
               const imgUrl = primaryImageUrl(product);
               const unavailable = !product.is_available || product.quantity_available === 0;
               const hasVariations = (product.variations ?? []).length > 0;
+              const inCart = guestQtyForProduct(product.id);
 
               const base = parseFloat(product.price);
               const varPrices = (product.variations ?? [])
@@ -131,7 +174,7 @@ export default function PublicCatalog() {
                 >
                   <div
                     className="relative aspect-video overflow-hidden rounded-t-xl bg-muted flex items-center justify-center cursor-pointer"
-                    onClick={() => setDetailProduct(product)}
+                    onClick={() => openDetail(product)}
                   >
                     {imgUrl ? (
                       <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" />
@@ -152,18 +195,27 @@ export default function PublicCatalog() {
                         </Badge>
                       )}
                     </div>
+
+                    {inCart > 0 && (
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-green-600 text-white text-xs gap-1">
+                          <CheckCircle2 size={10} />
+                          {inCart} no orçamento
+                        </Badge>
+                      </div>
+                    )}
                   </div>
 
                   <CardContent className="p-4 flex flex-col flex-1">
                     <h3
                       className="font-semibold text-sm leading-snug mb-1 cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => setDetailProduct(product)}
+                      onClick={() => openDetail(product)}
                     >
                       {product.name}
                     </h3>
                     <p
                       className="text-xs text-muted-foreground line-clamp-2 mb-3 cursor-pointer hover:text-foreground transition-colors"
-                      onClick={() => setDetailProduct(product)}
+                      onClick={() => openDetail(product)}
                     >
                       {product.description}
                     </p>
@@ -172,7 +224,7 @@ export default function PublicCatalog() {
                       <div className="flex flex-wrap gap-1 mb-3">
                         {(product.variations ?? []).slice(0, 3).map((v: ProductVariationAPI) => (
                           <Badge key={v.id} variant="outline" className="text-xs">
-                            {v.name}
+                            {v.value}
                           </Badge>
                         ))}
                         {(product.variations ?? []).length > 3 && (
@@ -198,7 +250,7 @@ export default function PublicCatalog() {
                           size="sm"
                           variant="outline"
                           className="px-2"
-                          onClick={() => setDetailProduct(product)}
+                          onClick={() => openDetail(product)}
                           title="Ver detalhes"
                         >
                           <Eye size={14} />
@@ -206,10 +258,16 @@ export default function PublicCatalog() {
                         <Button
                           size="sm"
                           disabled={unavailable}
-                          onClick={() => navigate('/login')}
+                          onClick={() => {
+                            if (hasVariations) {
+                              openDetail(product);
+                            } else {
+                              handleAddDirect(product);
+                            }
+                          }}
                         >
                           <ShoppingCart size={14} className="mr-1" />
-                          Adicionar
+                          {inCart > 0 && !hasVariations ? `Adicionado (${inCart})` : 'Adicionar'}
                         </Button>
                       </div>
                     </div>
@@ -221,6 +279,7 @@ export default function PublicCatalog() {
         )}
       </div>
 
+      {/* Modal de detalhes + adicionar ao orçamento */}
       <Dialog open={!!detailProduct} onOpenChange={(open) => !open && setDetailProduct(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           {detailProduct && (
@@ -228,6 +287,7 @@ export default function PublicCatalog() {
               <DialogHeader>
                 <DialogTitle>{detailProduct.name}</DialogTitle>
               </DialogHeader>
+
               {(() => {
                 const images = detailProduct.images ?? [];
                 const img = images.find((i) => i.is_primary) ?? images[0];
@@ -243,26 +303,81 @@ export default function PublicCatalog() {
                   </div>
                 );
               })()}
+
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{detailProduct.description}</p>
-              {(detailProduct.variations ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {detailProduct.variations.map((v: ProductVariationAPI) => (
-                    <Badge key={v.id} variant="outline" className="text-xs">{v.name}</Badge>
-                  ))}
+
+              {/* Seleção de variação */}
+              {modalVariations.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Selecione uma variação</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {modalVariations.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => {
+                          setSelectedVariation(v);
+                          setAddQty(1);
+                        }}
+                        className={cn(
+                          'flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors text-left',
+                          selectedVariation?.id === v.id
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border hover:border-primary/50',
+                        )}
+                      >
+                        <span className="font-medium">{v.value}</span>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{formatCurrency(parseFloat(v.price_modifier))}/dia</span>
+                          <span>{v.quantity_available} disponíveis</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Seletor de quantidade */}
+              {!modalUnavailable && (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Quantidade</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setAddQty((q) => Math.max(1, q - 1))}
+                      className="w-8 h-8 rounded border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-8 text-center font-semibold">{addQty}</span>
+                    <button
+                      onClick={() => setAddQty((q) => Math.min(selectedLimit, q + 1))}
+                      disabled={addQty >= selectedLimit}
+                      className="w-8 h-8 rounded border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <Button
                 className="w-full mt-2"
-                disabled={!detailProduct.is_available || detailProduct.quantity_available === 0}
-                onClick={() => navigate('/login')}
+                disabled={
+                  modalUnavailable ||
+                  (modalVariations.length > 0 && !selectedVariation)
+                }
+                onClick={handleAddFromModal}
               >
                 <ShoppingCart size={15} className="mr-2" />
-                Entrar para adicionar ao pedido
+                {modalVariations.length > 0 && !selectedVariation
+                  ? 'Selecione uma variação'
+                  : 'Adicionar ao orçamento'}
               </Button>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <PublicCartDrawer />
     </PublicLayout>
   );
 }
