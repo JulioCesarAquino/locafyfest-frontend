@@ -20,7 +20,7 @@ export function PublicHeader() {
           variant="outline"
           size="icon"
           onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-          className="w-8 h-8 sm:w-9 sm:h-9 hidden sm:flex"
+          className="w-8 h-8 sm:w-9 sm:h-9 flex"
         >
           {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </Button>

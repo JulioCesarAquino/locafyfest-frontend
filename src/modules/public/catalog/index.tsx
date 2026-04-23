@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, ShoppingCart, Package, Loader2, ImageOff, Link2, Eye, Plus, Minus, CheckCircle2 } from 'lucide-react';
+import { Search, ShoppingCart, Package, Loader2, ImageOff, Link2, Eye, Plus, Minus, CheckCircle2, Info } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn, storageUrl, formatCurrency } from '@/lib/utils';
 import { getProducts, type ProductAPI, type ProductVariationAPI } from '@/modules/admin/products/services';
@@ -76,6 +76,20 @@ export default function PublicCatalog() {
     return <Navigate to={homeFor(userType)} replace />;
   }
 
+  // Retorna quantas unidades do combo (produto + variação) já estão no guest cart
+  function inCartForCombo(productId: number, variationId?: number | null): number {
+    return guestItems
+      .filter((i) => i.product.id === productId && (i.variation?.id ?? null) === (variationId ?? null))
+      .reduce((s, i) => s + i.quantity, 0);
+  }
+
+  // Retorna o total de unidades de um produto (todas as variações) no guest cart
+  function inCartForProduct(productId: number): number {
+    return guestItems
+      .filter((i) => i.product.id === productId)
+      .reduce((s, i) => s + i.quantity, 0);
+  }
+
   function openDetail(product: ProductAPI) {
     setDetailProduct(product);
     setSelectedVariation(null);
@@ -83,35 +97,48 @@ export default function PublicCatalog() {
   }
 
   function handleAddDirect(product: ProductAPI) {
+    const stock = product.quantity_available;
+    const inCart = inCartForCombo(product.id);
+    const remaining = Math.max(0, stock - inCart);
+    if (remaining === 0) {
+      toast({
+        title: 'Quantidade máxima já adicionada',
+        description: `Você já tem ${inCart} unidade${inCart > 1 ? 's' : ''} de "${product.name}" no orçamento.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     addGuestItem(product, undefined, 1);
     toast({ title: 'Adicionado ao orçamento!', description: product.name });
   }
 
   function handleAddFromModal() {
     if (!detailProduct) return;
-    const hasVariations = (detailProduct.variations ?? []).filter((v) => v.is_available).length > 0;
+    const hasVariations = modalVariations.length > 0;
     if (hasVariations && !selectedVariation) {
       toast({ title: 'Selecione uma variação', variant: 'destructive' });
       return;
     }
+    // remaining é garantido > 0 pois o botão fica desabilitado caso contrário
     addGuestItem(detailProduct, selectedVariation ?? undefined, addQty);
     toast({ title: 'Adicionado ao orçamento!', description: detailProduct.name });
     setDetailProduct(null);
   }
 
-  function guestQtyForProduct(productId: number): number {
-    return guestItems
-      .filter((i) => i.product.id === productId)
-      .reduce((s, i) => s + i.quantity, 0);
-  }
-
+  // Variáveis derivadas do estado do modal — reativas automaticamente
   const modalVariations = (detailProduct?.variations ?? []).filter((v) => v.is_available);
-  const modalUnavailable =
-    !detailProduct?.is_available || detailProduct?.quantity_available === 0;
+  const modalUnavailable = !detailProduct?.is_available || detailProduct?.quantity_available === 0;
 
-  const selectedLimit = selectedVariation
+  const stockLimit = selectedVariation
     ? selectedVariation.quantity_available
-    : detailProduct?.quantity_available ?? 1;
+    : detailProduct?.quantity_available ?? 0;
+
+  const alreadyInCart = detailProduct
+    ? inCartForCombo(detailProduct.id, selectedVariation?.id ?? null)
+    : 0;
+
+  // Quanto ainda pode ser adicionado para este combo específico
+  const remaining = Math.max(0, stockLimit - alreadyInCart);
 
   return (
     <PublicLayout>
@@ -152,7 +179,9 @@ export default function PublicCatalog() {
               const imgUrl = primaryImageUrl(product);
               const unavailable = !product.is_available || product.quantity_available === 0;
               const hasVariations = (product.variations ?? []).length > 0;
-              const inCart = guestQtyForProduct(product.id);
+              const inCart = inCartForProduct(product.id);
+              // Para produtos sem variação, bloqueia o botão quando esgota o estoque físico
+              const stockFull = !hasVariations && inCart >= product.quantity_available;
 
               const base = parseFloat(product.price);
               const varPrices = (product.variations ?? [])
@@ -168,8 +197,8 @@ export default function PublicCatalog() {
                   key={product.id}
                   className={cn(
                     'bg-gradient-surface border-border/50 flex flex-col transition-all duration-300',
-                    !unavailable && 'hover:shadow-primary',
-                    unavailable && 'opacity-60',
+                    !unavailable && !stockFull && 'hover:shadow-primary',
+                    (unavailable || stockFull) && 'opacity-60',
                   )}
                 >
                   <div
@@ -257,7 +286,7 @@ export default function PublicCatalog() {
                         </Button>
                         <Button
                           size="sm"
-                          disabled={unavailable}
+                          disabled={unavailable || stockFull}
                           onClick={() => {
                             if (hasVariations) {
                               openDetail(product);
@@ -267,7 +296,11 @@ export default function PublicCatalog() {
                           }}
                         >
                           <ShoppingCart size={14} className="mr-1" />
-                          {inCart > 0 && !hasVariations ? `Adicionado (${inCart})` : 'Adicionar'}
+                          {stockFull
+                            ? 'Máximo atingido'
+                            : inCart > 0 && !hasVariations
+                            ? `Adicionado (${inCart})`
+                            : 'Adicionar'}
                         </Button>
                       </div>
                     </div>
@@ -311,65 +344,111 @@ export default function PublicCatalog() {
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Selecione uma variação</p>
                   <div className="grid grid-cols-1 gap-2">
-                    {modalVariations.map((v) => (
-                      <button
-                        key={v.id}
-                        onClick={() => {
-                          setSelectedVariation(v);
-                          setAddQty(1);
-                        }}
-                        className={cn(
-                          'flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors text-left',
-                          selectedVariation?.id === v.id
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border hover:border-primary/50',
-                        )}
-                      >
-                        <span className="font-medium">{v.value}</span>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{formatCurrency(parseFloat(v.price_modifier))}/dia</span>
-                          <span>{v.quantity_available} disponíveis</span>
-                        </div>
-                      </button>
-                    ))}
+                    {modalVariations.map((v) => {
+                      const varInCart = inCartForCombo(detailProduct.id, v.id);
+                      const varRemaining = Math.max(0, v.quantity_available - varInCart);
+                      return (
+                        <button
+                          key={v.id}
+                          onClick={() => {
+                            setSelectedVariation(v);
+                            setAddQty(1);
+                          }}
+                          className={cn(
+                            'flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors text-left',
+                            selectedVariation?.id === v.id
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border hover:border-primary/50',
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{v.value}</span>
+                            {varInCart > 0 && (
+                              <Badge className="bg-green-600 text-white text-xs px-1.5 py-0 h-4">
+                                {varInCart} no orçamento
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0 ml-2">
+                            <span>{formatCurrency(parseFloat(v.price_modifier))}/dia</span>
+                            <span className={varRemaining === 0 ? 'text-destructive font-medium' : ''}>
+                              {varRemaining === 0 ? 'esgotado' : `${varRemaining} restantes`}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* Seletor de quantidade */}
+              {/* Seletor de quantidade ou aviso de máximo atingido */}
               {!modalUnavailable && (
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">Quantidade</p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setAddQty((q) => Math.max(1, q - 1))}
-                      className="w-8 h-8 rounded border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span className="w-8 text-center font-semibold">{addQty}</span>
-                    <button
-                      onClick={() => setAddQty((q) => Math.min(selectedLimit, q + 1))}
-                      disabled={addQty >= selectedLimit}
-                      className="w-8 h-8 rounded border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Plus size={14} />
-                    </button>
+                <>
+                  {remaining === 0 ? (
+                    <div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+                      <Info size={15} className="shrink-0" />
+                      <span>
+                        {alreadyInCart > 0
+                          ? `Você já tem ${alreadyInCart} unidade${alreadyInCart > 1 ? 's' : ''} no orçamento — quantidade máxima do estoque físico atingida.`
+                          : 'Este item está esgotado.'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Quantidade</p>
+                        {alreadyInCart > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {alreadyInCart} já no orçamento · ainda {remaining} disponíve{remaining === 1 ? 'l' : 'is'}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setAddQty((q) => Math.max(1, q - 1))}
+                          className="w-8 h-8 rounded border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="w-8 text-center font-semibold">{addQty}</span>
+                        <button
+                          onClick={() => setAddQty((q) => Math.min(remaining, q + 1))}
+                          disabled={addQty >= remaining}
+                          className="w-8 h-8 rounded border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Aviso de datas — Problema 2 (Opção A+C) */}
+                  <div className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                    <Info size={13} className="shrink-0 mt-0.5" />
+                    <span>
+                      O estoque exibido é o total físico. A disponibilidade real será confirmada ao selecionar as datas do evento após o login.
+                    </span>
                   </div>
-                </div>
+                </>
               )}
 
               <Button
-                className="w-full mt-2"
+                className="w-full mt-1"
                 disabled={
                   modalUnavailable ||
-                  (modalVariations.length > 0 && !selectedVariation)
+                  (modalVariations.length > 0 && !selectedVariation) ||
+                  remaining === 0
                 }
                 onClick={handleAddFromModal}
               >
                 <ShoppingCart size={15} className="mr-2" />
-                {modalVariations.length > 0 && !selectedVariation
+                {modalUnavailable
+                  ? 'Produto indisponível'
+                  : modalVariations.length > 0 && !selectedVariation
                   ? 'Selecione uma variação'
+                  : remaining === 0
+                  ? 'Quantidade máxima atingida'
                   : 'Adicionar ao orçamento'}
               </Button>
             </>

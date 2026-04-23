@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingCart, X, Plus, Minus, Trash2, LogIn, UserPlus } from 'lucide-react';
+import { ShoppingCart, X, Plus, Minus, Trash2, LogIn, UserPlus, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -129,9 +129,12 @@ export function PublicCartDrawer() {
               <p className="text-2xl font-bold text-primary">{formatCurrency(total)}</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Valor estimado por diária. O total final depende do período e frete.
-          </p>
+          <div className="flex items-start gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            <Info size={13} className="shrink-0 mt-0.5" />
+            <span>
+              Estoque exibido é o total físico. A disponibilidade real e o valor final serão confirmados ao selecionar as datas do evento.
+            </span>
+          </div>
           <Button
             className="w-full btn-primary"
             onClick={() => {
